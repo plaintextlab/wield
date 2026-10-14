@@ -231,8 +231,8 @@ impl StartupManager {
 
         egui::Panel::right("startup_details")
             .resizable(true)
-            .default_size(380.0)
-            .size_range(300.0..=620.0)
+            .default_size(320.0)
+            .size_range(280.0..=620.0)
             .frame(egui::Frame::new().fill(theme::SIDEBAR).inner_margin(Margin::same(16)))
             .show(ui, |ui| self.details(ui, elevated, toasts));
 
@@ -503,12 +503,12 @@ impl StartupManager {
             .sense(Sense::click())
             .cell_layout(Layout::left_to_right(Align::Center))
             .column(Column::exact(48.0))
-            .column(Column::initial(250.0).at_least(160.0).clip(true))
-            .column(Column::initial(140.0).at_least(80.0).clip(true))
-            .column(Column::initial(120.0).at_least(80.0).clip(true))
-            .column(Column::initial(76.0).at_least(70.0))
-            .column(Column::initial(132.0).at_least(120.0))
-            .column(Column::remainder().at_least(90.0).clip(true))
+            .column(Column::remainder().at_least(150.0).clip(true))
+            .column(Column::initial(120.0).at_least(70.0).clip(true))
+            .column(Column::initial(118.0).at_least(80.0).clip(true))
+            .column(Column::exact(76.0))
+            .column(Column::exact(132.0))
+            .column(Column::initial(110.0).at_least(80.0).clip(true))
             .header(26.0, |mut h| {
                 h.col(|ui| header_cell(ui, "ON", None, &mut sort_click));
                 h.col(|ui| header_cell(ui, "NAME", Some(SortCol::Name), &mut sort_click));

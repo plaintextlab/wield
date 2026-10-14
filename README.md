@@ -2,8 +2,13 @@
 
 A native Rust utility app for managing Windows 10 and Windows 11 (Home, Pro, Enterprise, Education, LTSC/IoT).
 Single portable `.exe`, no runtime or installer needed.
+Download it from [Releases](https://github.com/plaintextlab/wield/releases).
+
+![Startup Manager](docs/screenshots/startup.png)
 
 ## Tools
+
+![Home screen](docs/screenshots/home.png)
 
 | Tool | Status |
 |---|---|

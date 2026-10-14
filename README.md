@@ -58,3 +58,17 @@ cargo test live_scan -- --ignored --nocapture
 ```
 
 The second command scans the real machine and prints every entry with its rating.
+
+## Releases
+
+CI builds and tests every push and pull request. To publish a release, push a version tag:
+
+```bash
+git tag v0.1.0
+```
+
+```bash
+git push origin v0.1.0
+```
+
+The Release workflow attaches `wield-<tag>-windows-x64.exe` and its SHA-256 checksum to a GitHub Release.

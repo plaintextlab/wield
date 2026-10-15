@@ -2,6 +2,7 @@
 
 pub mod elevation;
 pub mod fileinfo;
+pub mod http;
 pub mod shell;
 pub mod sysver;
 

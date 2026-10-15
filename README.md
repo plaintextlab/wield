@@ -19,6 +19,7 @@ at the bottom of the sidebar; your choice is remembered.
 | **Privacy & Telemetry** | ✅ Available |
 | **App Debloater** | ✅ Available |
 | **Network Toolkit** | ✅ Available |
+| **Malware Scanner** | ✅ Available |
 | Disk Cleanup, Update Control, Uninstaller, System Info | Planned |
 
 ### Startup Manager
@@ -139,6 +140,38 @@ Windows-protected system components are hidden by default and can't be selected.
 
 Per-app traffic, blocking, opening ports, closing connections, DNS changes and most repairs need administrator rights.
 
+### Malware Scanner
+
+![Malware Scanner](docs/screenshots/malware.png)
+
+Scan any file or folder. Drop it on the window, use the pickers, or right-click it in Explorer and choose
+**Scan with Wield** (an opt-in setting). It works without any account or API key:
+
+- **Microsoft Defender scans it locally.** By default Defender only reports; tick the option to let it quarantine
+  threats.
+- **The digital signature is verified**, including Windows catalog signing, so system files show as signed by
+  Microsoft Windows.
+- **Download origin**: the URL Windows recorded when the file was downloaded.
+- **Online reputation, by fingerprint only**:
+  - SHA-1 is checked against the **Team Cymru Malware Hash Registry** (the percentage of antivirus engines that flag
+    the file) and **CIRCL hashlookup** (known legitimate software, or known malicious).
+  - File contents never leave the PC. For big folders, only programs, scripts and archives are checked online.
+- Every file gets a verdict (**Threat**, **Suspicious**, **No known threats** or **Trusted**) with the reasons behind it.
+- **Open on VirusTotal** shows the file's report in your browser by SHA-256, with no account needed.
+  **Upload to VirusTotal…** warns that uploads are shared with security vendors, then opens the upload page for you
+  to upload manually.
+- Move files to the Recycle Bin (never files inside the Windows folder) or exclude them from Defender.
+
+**Protection & exclusions**: Defender status (engine, real-time protection, definition age, Tamper Protection), update
+definitions, and list/add/remove exclusions for files and folders, file types and processes.
+
+**Detections & quarantine**: Defender's detection history with severity and outcome. Quarantined items can be
+**restored**, optionally adding an exclusion first so Defender doesn't catch them again. High and severe threats
+require typing `RESTORE`. Items Defender *removed* (rather than quarantined) can't be restored.
+
+Exclusions, quarantine and restore need administrator rights. On work PCs, policy or Tamper Protection may block
+exclusions.
+
 ## Build
 
 Requires the Rust MSVC toolchain.
@@ -147,8 +180,9 @@ Requires the Rust MSVC toolchain.
 cargo build --release
 ```
 
-The binary is `target/release/wield.exe`. Run `wield.exe --tool startup|privacy|debloat|network` to open a tool directly. For the Network Toolkit,
-add `--tab ports|firewall|scanner|tools` to open a specific tab.
+The binary is `target/release/wield.exe`. Run `wield.exe --tool startup|privacy|debloat|network|malware` to open a tool directly. Add `--tab` to open a
+specific tab: `ports|firewall|scanner|tools` for the Network Toolkit, `protection|detections` for the Malware Scanner.
+`wield.exe --scan <file or folder>` opens the Malware Scanner and starts scanning.
 
 ```bash
 cargo test

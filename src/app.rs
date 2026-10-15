@@ -6,6 +6,7 @@ use egui_phosphor::regular as icon;
 use crate::theme;
 use crate::toast::Toasts;
 use crate::tools::debloat::ui::DebloatManager;
+use crate::tools::malware::ui::MalwareManager;
 use crate::tools::network::ui::NetworkManager;
 use crate::tools::privacy::ui::PrivacyManager;
 use crate::tools::startup::ui::StartupManager;
@@ -18,6 +19,7 @@ enum ToolId {
     Privacy,
     Debloat,
     Network,
+    Malware,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -53,6 +55,12 @@ const TOOLS: &[ToolInfo] = &[
         title: "App Debloater",
         blurb: "Remove preinstalled Store apps you don't use. Reinstall any time.",
     },
+    ToolInfo {
+        id: Some(ToolId::Malware),
+        icon: icon::SHIELD_WARNING,
+        title: "Malware Scanner",
+        blurb: "Defender scans, signatures and online hash checks; exclusions and quarantine restore.",
+    },
     ToolInfo { id: None, icon: icon::BROOM, title: "Disk Cleanup", blurb: "Find and clear temp files, caches and leftovers." },
     ToolInfo { id: None, icon: icon::CLOUD_ARROW_DOWN, title: "Update Control", blurb: "Pause, schedule and tune Windows Update." },
     ToolInfo {
@@ -74,6 +82,7 @@ pub struct WieldApp {
     privacy: PrivacyManager,
     debloat: DebloatManager,
     network: NetworkManager,
+    malware: MalwareManager,
 }
 
 impl WieldApp {
@@ -87,14 +96,25 @@ impl WieldApp {
             Some("privacy") => View::Tool(ToolId::Privacy),
             Some("debloat") => View::Tool(ToolId::Debloat),
             Some("network") => View::Tool(ToolId::Network),
+            Some("malware") => View::Tool(ToolId::Malware),
             _ => View::Home,
         };
         let mut network = NetworkManager::new();
         if let Some(tab) = args.iter().position(|a| a == "--tab").and_then(|i| args.get(i + 1)) {
             network.set_tab(tab);
         }
+        // `--scan <path>` (used by Explorer's "Scan with Wield") opens the scanner and starts right away.
+        let mut malware = MalwareManager::new();
+        let mut view = view;
+        if let Some(tab) = args.iter().position(|a| a == "--tab").and_then(|i| args.get(i + 1)) {
+            malware.set_tab(tab);
+        }
+        if let Some(p) = args.iter().position(|a| a == "--scan").and_then(|i| args.get(i + 1)) {
+            view = View::Tool(ToolId::Malware);
+            malware.scan_paths(vec![std::path::PathBuf::from(p)], &cc.egui_ctx);
+        }
         let os = os_info();
-        Self { view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
+        Self { view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(),  network, malware, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
     }
 
     fn sidebar(&mut self, ui: &mut Ui) {
@@ -208,6 +228,7 @@ impl WieldApp {
             Some(ToolId::Privacy) => self.privacy.summary_line(),
             Some(ToolId::Debloat) => self.debloat.summary_line(),
             Some(ToolId::Network) => self.network.summary_line(),
+            Some(ToolId::Malware) => self.malware.summary_line(),
             None => None,
         };
         // Live status sits on its own line at the bottom of the card, above a divider.
@@ -261,6 +282,7 @@ impl eframe::App for WieldApp {
             View::Tool(ToolId::Privacy) => self.privacy.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Debloat) => self.debloat.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Network) => self.network.show(ui, self.elevated, &mut self.toasts),
+            View::Tool(ToolId::Malware) => self.malware.show(ui, self.elevated, &mut self.toasts),
         });
 
         let ctx = ui.ctx().clone();

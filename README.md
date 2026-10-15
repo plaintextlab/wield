@@ -14,7 +14,8 @@ Download it from [Releases](https://github.com/plaintextlab/wield/releases).
 |---|---|
 | **Startup Manager** | ✅ Available |
 | **Privacy & Telemetry** | ✅ Available |
-| App Debloater, Disk Cleanup, Update Control, Network Toolkit, Uninstaller, System Info | Planned |
+| **App Debloater** | ✅ Available |
+| Disk Cleanup, Update Control, Network Toolkit, Uninstaller, System Info | Planned |
 
 ### Startup Manager
 
@@ -77,6 +78,29 @@ How it behaves:
   exactly as it was.
 - Personal (HKCU) settings work without admin rights. All-users settings are marked with a lock.
 
+### App Debloater
+
+![App Debloater](docs/screenshots/debloat.png)
+
+Lists every Store/MSIX app installed for your account, using the Windows `PackageManager` API rather than PowerShell.
+Each app shows its publisher, size and source, and gets one of four verdicts:
+
+- 🟢 **Recommended to remove**: preinstalled promotions and retired apps, such as Candy Crush, TikTok, Spotify, Disney+,
+  Microsoft News, Tips, Solitaire, Clipchamp, Mixed Reality Portal, Movies & TV and Cortana.
+- 🔵 **Optional**: fine to remove if you don't use it (Weather, Sticky Notes, Phone Link, Teams, Xbox Game Bar…).
+- 🟠 **Use caution**: removing it breaks something, such as image/video codecs, Xbox sign-in for PC games,
+  GPU/audio/touchpad control panels, Photos, Calculator or Snipping Tool. You must tick a confirmation box.
+- 🔴 **Keep**: Microsoft Store, App Installer (winget), Windows Security, Edge and the app runtimes. You must type
+  `REMOVE` to confirm.
+
+Windows-protected system components are hidden by default and can't be selected.
+
+- **Select recommended** checks all bloat in one click. The removal dialog lists every app and its verdict first.
+- Remove for **your account only** (no admin needed), or as administrator for **all accounts**. As administrator you
+  can also stop an app from reinstalling for new accounts and after feature updates.
+- Every removal is logged to `%LOCALAPPDATA%\Wield\debloat-journal.json`. **History → Reinstall** re-registers the
+  app from its files when Windows still has them, and otherwise opens its Microsoft Store page.
+
 ## Build
 
 Requires the Rust MSVC toolchain.
@@ -85,7 +109,7 @@ Requires the Rust MSVC toolchain.
 cargo build --release
 ```
 
-The binary is `target/release/wield.exe`. Run `wield.exe --tool startup` or `wield.exe --tool privacy` to open a tool directly.
+The binary is `target/release/wield.exe`. Run `wield.exe --tool startup|privacy|debloat` to open a tool directly.
 
 ```bash
 cargo test

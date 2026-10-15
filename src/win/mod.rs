@@ -31,6 +31,20 @@ pub fn with_com<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T 
     .expect("worker thread panicked")
 }
 
+/// Runs `f` on a worker thread in the multithreaded apartment (for blocking WinRT calls).
+pub fn with_mta<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
+    std::thread::spawn(move || {
+        let hr = unsafe { CoInitializeEx(None, windows::Win32::System::Com::COINIT_MULTITHREADED) };
+        let out = f();
+        if hr.is_ok() {
+            unsafe { CoUninitialize() };
+        }
+        out
+    })
+    .join()
+    .expect("worker thread panicked")
+}
+
 /// Initializes COM for the current thread and uninitializes it on drop.
 pub struct ComGuard {
     owned: bool,

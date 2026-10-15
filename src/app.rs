@@ -5,6 +5,7 @@ use egui_phosphor::regular as icon;
 
 use crate::theme::{self, ACCENT, BORDER, GREEN, ORANGE, TEXT_DIM};
 use crate::toast::Toasts;
+use crate::tools::debloat::ui::DebloatManager;
 use crate::tools::privacy::ui::PrivacyManager;
 use crate::tools::startup::ui::StartupManager;
 use crate::win::elevation;
@@ -14,6 +15,7 @@ use crate::win::sysver::{OsInfo, os_info};
 enum ToolId {
     Startup,
     Privacy,
+    Debloat,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -43,7 +45,12 @@ const TOOLS: &[ToolInfo] = &[
         title: "Privacy & Telemetry",
         blurb: "Turn off telemetry, ads, web search and tracking, with one-click restore.",
     },
-    ToolInfo { id: None, icon: icon::PACKAGE, title: "App Debloater", blurb: "Remove preinstalled Store apps you don't use." },
+    ToolInfo {
+        id: Some(ToolId::Debloat),
+        icon: icon::PACKAGE,
+        title: "App Debloater",
+        blurb: "Remove preinstalled Store apps you don't use. Reinstall any time.",
+    },
     ToolInfo { id: None, icon: icon::BROOM, title: "Disk Cleanup", blurb: "Find and clear temp files, caches and leftovers." },
     ToolInfo { id: None, icon: icon::CLOUD_ARROW_DOWN, title: "Update Control", blurb: "Pause, schedule and tune Windows Update." },
     ToolInfo { id: None, icon: icon::NETWORK, title: "Network Toolkit", blurb: "DNS, hosts file, adapter reset and diagnostics." },
@@ -58,6 +65,7 @@ pub struct WieldApp {
     toasts: Toasts,
     startup: StartupManager,
     privacy: PrivacyManager,
+    debloat: DebloatManager,
 }
 
 impl WieldApp {
@@ -68,10 +76,11 @@ impl WieldApp {
         let view = match args.iter().position(|a| a == "--tool").and_then(|i| args.get(i + 1)).map(String::as_str) {
             Some("startup") => View::Tool(ToolId::Startup),
             Some("privacy") => View::Tool(ToolId::Privacy),
+            Some("debloat") => View::Tool(ToolId::Debloat),
             _ => View::Home,
         };
         let os = os_info();
-        Self { view, privacy: PrivacyManager::new(os.clone()), os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
+        Self { view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
     }
 
     fn sidebar(&mut self, ui: &mut Ui) {
@@ -177,6 +186,7 @@ impl WieldApp {
         let summary = match t.id {
             Some(ToolId::Startup) => self.startup.summary_line(),
             Some(ToolId::Privacy) => self.privacy.summary_line(),
+            Some(ToolId::Debloat) => self.debloat.summary_line(),
             None => None,
         };
         if let Some(s) = summary {
@@ -221,6 +231,7 @@ impl eframe::App for WieldApp {
             View::Home => self.home(ui),
             View::Tool(ToolId::Startup) => self.startup.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Privacy) => self.privacy.show(ui, self.elevated, &mut self.toasts),
+            View::Tool(ToolId::Debloat) => self.debloat.show(ui, self.elevated, &mut self.toasts),
         });
 
         let ctx = ui.ctx().clone();

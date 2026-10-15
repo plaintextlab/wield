@@ -36,10 +36,11 @@ pub fn render_icon(n: usize) -> Vec<u8> {
                         continue;
                     }
                     let t = (x + y) / 128.0;
+                    // Gruvbox: yellow (#fabd2f) to orange (#fe8019) tile, bg0_h (#1d2021) bolt.
                     let (cr, cg, cb) = if inside_bolt(x, y) {
-                        (255.0, 255.0, 255.0)
+                        (29.0, 32.0, 33.0)
                     } else {
-                        (76.0 + (138.0 - 76.0) * t, 141.0 + (92.0 - 141.0) * t, 255.0 + (246.0 - 255.0) * t)
+                        (250.0 + (254.0 - 250.0) * t, 189.0 + (128.0 - 189.0) * t, 47.0 + (25.0 - 47.0) * t)
                     };
                     r += cr;
                     g += cg;

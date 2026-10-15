@@ -4,6 +4,9 @@ A native Rust utility app for managing Windows 10 and Windows 11 (Home, Pro, Ent
 Single portable `.exe`, no runtime or installer needed.
 Download it from [Releases](https://github.com/plaintextlab/wield/releases).
 
+Uses the [Gruvbox](https://github.com/morhetz/gruvbox) color scheme, in dark and light. Switch with the sun/moon button
+at the bottom of the sidebar; your choice is remembered.
+
 ![Startup Manager](docs/screenshots/startup.png)
 
 ## Tools
@@ -15,7 +18,8 @@ Download it from [Releases](https://github.com/plaintextlab/wield/releases).
 | **Startup Manager** | ✅ Available |
 | **Privacy & Telemetry** | ✅ Available |
 | **App Debloater** | ✅ Available |
-| Disk Cleanup, Update Control, Network Toolkit, Uninstaller, System Info | Planned |
+| **Network Toolkit** | ✅ Available |
+| Disk Cleanup, Update Control, Uninstaller, System Info | Planned |
 
 ### Startup Manager
 
@@ -101,6 +105,40 @@ Windows-protected system components are hidden by default and can't be selected.
 - Every removal is logged to `%LOCALAPPDATA%\Wield\debloat-journal.json`. **History → Reinstall** re-registers the
   app from its files when Windows still has them, and otherwise opens its Microsoft Store page.
 
+### Network Toolkit
+
+![Network Toolkit](docs/screenshots/network.png)
+
+![Network Toolkit in Gruvbox light](docs/screenshots/network-light.png)
+
+- **Activity**: every process with network sockets, plus a live whole-PC throughput graph.
+  - As administrator, each app gets live download/upload speeds and the bytes it has moved since Wield started
+    watching. These come from Windows' per-connection TCP statistics.
+  - Select an app to see each connection: the host name (from the DNS cache, otherwise reverse DNS), port/service,
+    state and speed.
+  - Known **telemetry**, **ads/tracking** and **crash-report** servers are flagged.
+  - Wield can't read *what* is sent: almost all traffic is encrypted. It shows *who* each app talks to and *how much*.
+- **Block or allow any app** with its switch. This creates Windows Firewall rules that block the program in both
+  directions. Blocking Windows' own programs (svchost.exe and others) asks for confirmation first. Individual IPv4
+  connections can be closed.
+- **Ports**: which process listens on which TCP/UDP port, the service name, and whether the port is reachable from the
+  network or only from this PC.
+- **Firewall**: your blocked-programs list (add any `.exe` with Browse…, toggle, remove) and **open inbound ports**
+  (TCP/UDP, single ports, ranges or lists). Every rule is in the "Wield" group, so it's easy to find in `wf.msc`.
+- **Scanner**:
+  - Discovers devices on your LAN with a parallel ping sweep plus the ARP cache. Shows IP, name, MAC, latency, the
+    router, this PC, and randomized private MACs.
+  - Includes a TCP **port scanner** (common ports, 1-1024, or a custom list). Only scan devices you own or are
+    allowed to test.
+- **Tools**:
+  - Adapter details, and **DNS presets** per adapter (Automatic, Cloudflare, Cloudflare malware-blocking, Google,
+    Quad9, AdGuard).
+  - Flush the DNS cache, ping, and show your public IP (asks api.ipify.org only when you click).
+  - A **hosts-file domain blocker**. The original hosts file is backed up the first time Wield edits it.
+  - **Repairs**: renew IP, clear ARP cache, reset Winsock, reset TCP/IP.
+
+Per-app traffic, blocking, opening ports, closing connections, DNS changes and most repairs need administrator rights.
+
 ## Build
 
 Requires the Rust MSVC toolchain.
@@ -109,7 +147,8 @@ Requires the Rust MSVC toolchain.
 cargo build --release
 ```
 
-The binary is `target/release/wield.exe`. Run `wield.exe --tool startup|privacy|debloat` to open a tool directly.
+The binary is `target/release/wield.exe`. Run `wield.exe --tool startup|privacy|debloat|network` to open a tool directly. For the Network Toolkit,
+add `--tab ports|firewall|scanner|tools` to open a specific tab.
 
 ```bash
 cargo test

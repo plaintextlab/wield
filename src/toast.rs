@@ -22,13 +22,13 @@ impl Toasts {
         ctx.request_repaint();
     }
     pub fn success(&mut self, ctx: &egui::Context, text: impl Into<String>) {
-        self.push(ctx, text, theme::GREEN, 4.0);
+        self.push(ctx, text, theme::green(), 4.0);
     }
     pub fn info(&mut self, ctx: &egui::Context, text: impl Into<String>) {
-        self.push(ctx, text, theme::ACCENT, 4.0);
+        self.push(ctx, text, theme::accent(), 4.0);
     }
     pub fn error(&mut self, ctx: &egui::Context, text: impl Into<String>) {
-        self.push(ctx, text, theme::RED, 8.0);
+        self.push(ctx, text, theme::red(), 8.0);
     }
 
     pub fn show(&mut self, ctx: &egui::Context) {
@@ -44,14 +44,14 @@ impl Toasts {
                 ui.set_max_width(380.0);
                 for t in &self.list {
                     egui::Frame::new()
-                        .fill(theme::CARD)
+                        .fill(theme::card())
                         .stroke(Stroke::new(1.0, t.color.gamma_multiply(0.7)))
                         .corner_radius(CornerRadius::same(8))
                         .inner_margin(Margin::symmetric(14, 10))
                         .show(ui, |ui| {
                             ui.horizontal(|ui| {
                                 ui.label(RichText::new("●").color(t.color));
-                                ui.add(egui::Label::new(RichText::new(&t.text).color(theme::TEXT)).wrap());
+                                ui.add(egui::Label::new(RichText::new(&t.text).color(theme::text())).wrap());
                             });
                         });
                     ui.add_space(6.0);

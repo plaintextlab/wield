@@ -11,7 +11,7 @@ use egui_phosphor::regular as icon;
 
 use super::catalog::Verdict;
 use super::packages::{self, AppPackage, RemovalLog, RemovedApp};
-use crate::theme::{self, ACCENT, GREEN, ORANGE, RED, TEXT_DIM, YELLOW};
+use crate::theme;
 use crate::toast::Toasts;
 use crate::tools::startup::journal;
 use crate::win::fileinfo::format_bytes;
@@ -50,10 +50,10 @@ impl Tab {
 
 pub fn verdict_color(v: Verdict) -> Color32 {
     match v {
-        Verdict::Bloat => GREEN,
-        Verdict::Optional => ACCENT,
-        Verdict::Caution => ORANGE,
-        Verdict::Keep => RED,
+        Verdict::Bloat => theme::green(),
+        Verdict::Optional => theme::accent(),
+        Verdict::Caution => theme::orange(),
+        Verdict::Keep => theme::red(),
     }
 }
 
@@ -212,8 +212,8 @@ impl DebloatManager {
             egui::CentralPanel::no_frame().show(ui, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.add_space(ui.available_height() * 0.3);
-                    ui.add(egui::Spinner::new().size(36.0).color(ACCENT));
-                    ui.label(RichText::new("Listing installed apps…").color(TEXT_DIM));
+                    ui.add(egui::Spinner::new().size(36.0).color(theme::accent()));
+                    ui.label(RichText::new("Listing installed apps…").color(theme::text_dim()));
                 });
             });
             return;
@@ -223,7 +223,7 @@ impl DebloatManager {
             .resizable(true)
             .default_size(320.0)
             .size_range(280.0..=560.0)
-            .frame(egui::Frame::new().fill(theme::SIDEBAR).inner_margin(Margin::same(16)))
+            .frame(egui::Frame::new().fill(theme::sidebar()).inner_margin(Margin::same(16)))
             .show(ui, |ui| self.details(ui));
 
         egui::CentralPanel::no_frame().show(ui, |ui| {
@@ -237,10 +237,10 @@ impl DebloatManager {
         let ctx = ui.ctx().clone();
         let busy = self.job_rx.is_some() || self.scan_rx.is_some();
         ui.horizontal(|ui| {
-            ui.label(RichText::new(icon::PACKAGE).size(26.0).color(ACCENT));
+            ui.label(RichText::new(icon::PACKAGE).size(26.0).color(theme::accent()));
             ui.vertical(|ui| {
                 ui.heading("App Debloater");
-                ui.label(RichText::new("Remove preinstalled and unused Store apps. Removed apps can be reinstalled.").color(TEXT_DIM));
+                ui.label(RichText::new("Remove preinstalled and unused Store apps. Removed apps can be reinstalled.").color(theme::text_dim()));
             });
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let sel = self.selected_apps();
@@ -250,7 +250,7 @@ impl DebloatManager {
                 } else {
                     format!("{} Remove {} app(s) · {}", icon::TRASH, sel.len(), format_bytes(size))
                 };
-                if theme::danger_button(ui, label, RED, !busy && !sel.is_empty()).clicked() {
+                if theme::danger_button(ui, label, theme::red(), !busy && !sel.is_empty()).clicked() {
                     self.dialog = Some(RemoveDialog { all_users: elevated, deprovision: elevated, acknowledged: false, typed: String::new() });
                 }
                 let rec: Vec<String> = self.apps.iter().filter(|a| a.verdict == Verdict::Bloat && a.removable()).map(|a| a.full_name.clone()).collect();
@@ -276,7 +276,7 @@ impl DebloatManager {
             let mut clicked = false;
             banner(
                 ui,
-                ORANGE,
+                theme::orange(),
                 icon::LOCK,
                 "Removing apps for all users, and stopping them from coming back, needs administrator rights.",
                 Some(("Restart as administrator", &mut clicked)),
@@ -286,7 +286,7 @@ impl DebloatManager {
             }
         }
         if let Some(e) = self.error.clone() {
-            banner(ui, RED, icon::WARNING, &e, None);
+            banner(ui, theme::red(), icon::WARNING, &e, None);
         }
         if !self.scanned {
             return;
@@ -298,7 +298,7 @@ impl DebloatManager {
             for tab in Tab::ALL {
                 let count = self.apps.iter().filter(|a| tab.matches(a) && (self.show_system || !a.system)).count();
                 let sel = self.tab == tab;
-                let color = if sel { theme::TEXT } else { TEXT_DIM };
+                let color = if sel { theme::text() } else { theme::text_dim() };
                 if ui.add(egui::Button::new(RichText::new(format!("{}  {count}", tab.label())).color(color)).selected(sel).frame_when_inactive(false)).clicked() {
                     self.tab = tab;
                 }
@@ -321,10 +321,10 @@ impl DebloatManager {
         let sel_size: u64 = sel.iter().filter_map(|a| a.size).sum();
         let system = self.apps.iter().filter(|a| a.system).count();
         let tiles = [
-            (icon::PACKAGE, "Removable apps".to_string(), removable.len().to_string(), ACCENT),
-            (icon::TRASH, format!("Recommended to remove · {}", format_bytes(bloat_size)), bloat.len().to_string(), GREEN),
-            (icon::LIST_CHECKS, format!("Selected · {}", format_bytes(sel_size)), sel.len().to_string(), YELLOW),
-            (icon::LOCK, "Protected Windows components".to_string(), system.to_string(), TEXT_DIM),
+            (icon::PACKAGE, "Removable apps".to_string(), removable.len().to_string(), theme::accent()),
+            (icon::TRASH, format!("Recommended to remove · {}", format_bytes(bloat_size)), bloat.len().to_string(), theme::green()),
+            (icon::LIST_CHECKS, format!("Selected · {}", format_bytes(sel_size)), sel.len().to_string(), theme::yellow()),
+            (icon::LOCK, "Protected Windows components".to_string(), system.to_string(), theme::text_dim()),
         ];
         ui.columns(4, |cols| {
             for (i, (ic, label, value, color)) in tiles.into_iter().enumerate() {
@@ -334,7 +334,7 @@ impl DebloatManager {
                         ui.label(RichText::new(ic).size(22.0).color(color));
                         ui.vertical(|ui| {
                             ui.label(RichText::new(value).font(FontId::new(22.0, theme::heading_family())).color(color));
-                            ui.label(RichText::new(label).small().color(TEXT_DIM));
+                            ui.label(RichText::new(label).small().color(theme::text_dim()));
                         });
                     });
                 });
@@ -348,7 +348,7 @@ impl DebloatManager {
             ui.add_space(40.0);
             ui.vertical_centered(|ui| {
                 let msg = if self.tab == Tab::Bloat { "Nothing to remove here. This PC has no known bloatware installed." } else { "No apps match." };
-                ui.label(RichText::new(msg).color(TEXT_DIM));
+                ui.label(RichText::new(msg).color(theme::text_dim()));
             });
             return;
         }
@@ -381,7 +381,7 @@ impl DebloatManager {
                 });
                 for t in ["APP", "PUBLISHER", "VERDICT", "SIZE", "SOURCE"] {
                     h.col(|ui| {
-                        ui.label(RichText::new(t).small().strong().color(TEXT_DIM));
+                        ui.label(RichText::new(t).small().strong().color(theme::text_dim()));
                     });
                 }
             })
@@ -403,24 +403,24 @@ impl DebloatManager {
                             ui.horizontal(|ui| {
                                 ui.spacing_mut().item_spacing.x = 4.0;
                                 if a.system {
-                                    ui.label(RichText::new(icon::LOCK).small().color(TEXT_DIM));
+                                    ui.label(RichText::new(icon::LOCK).small().color(theme::text_dim()));
                                 }
                                 ui.add(Label::new(RichText::new(&a.display_name).strong()).truncate().selectable(false));
                             });
-                            ui.add(Label::new(RichText::new(&a.name).small().color(TEXT_DIM)).truncate().selectable(false));
+                            ui.add(Label::new(RichText::new(&a.name).small().color(theme::text_dim())).truncate().selectable(false));
                         });
                     });
                     row.col(|ui| {
-                        ui.add(Label::new(RichText::new(&a.publisher).color(TEXT_DIM)).truncate().selectable(false));
+                        ui.add(Label::new(RichText::new(&a.publisher).color(theme::text_dim())).truncate().selectable(false));
                     });
                     row.col(|ui| {
                         theme::badge(ui, format!("{} {}", verdict_icon(a.verdict), a.verdict.label()), verdict_color(a.verdict));
                     });
                     row.col(|ui| {
-                        ui.label(RichText::new(a.size.map(format_bytes).unwrap_or_else(|| "—".into())).color(TEXT_DIM));
+                        ui.label(RichText::new(a.size.map(format_bytes).unwrap_or_else(|| "—".into())).color(theme::text_dim()));
                     });
                     row.col(|ui| {
-                        ui.add(Label::new(RichText::new(a.source).color(TEXT_DIM)).truncate().selectable(false));
+                        ui.add(Label::new(RichText::new(a.source).color(theme::text_dim())).truncate().selectable(false));
                     });
                     if row.response().clicked() {
                         clicked = Some(a.full_name.clone());
@@ -455,9 +455,9 @@ impl DebloatManager {
         let Some(a) = self.detail.as_ref().and_then(|f| self.apps.iter().find(|a| &a.full_name == f)).cloned() else {
             ui.add_space(60.0);
             ui.vertical_centered(|ui| {
-                ui.label(RichText::new(icon::CURSOR_CLICK).size(40.0).color(TEXT_DIM));
+                ui.label(RichText::new(icon::CURSOR_CLICK).size(40.0).color(theme::text_dim()));
                 ui.add_space(8.0);
-                ui.label(RichText::new("Select an app to see what it is\nand what removing it affects.").color(TEXT_DIM));
+                ui.label(RichText::new("Select an app to see what it is\nand what removing it affects.").color(theme::text_dim()));
                 ui.add_space(20.0);
                 theme::card_frame().show(ui, |ui| {
                     ui.set_width(ui.available_width());
@@ -469,7 +469,7 @@ impl DebloatManager {
                             Verdict::Caution => "Breaks a feature, codec, game sign-in or hardware panel.",
                             Verdict::Keep => "Windows or app installs depend on it. Type REMOVE to confirm.",
                         };
-                        ui.label(RichText::new(t).small().color(TEXT_DIM));
+                        ui.label(RichText::new(t).small().color(theme::text_dim()));
                         ui.add_space(4.0);
                     }
                 });
@@ -482,22 +482,22 @@ impl DebloatManager {
             ui.horizontal_wrapped(|ui| {
                 theme::badge(ui, format!("{} {}", verdict_icon(a.verdict), a.verdict.label()), color);
                 if a.system {
-                    theme::badge(ui, format!("{} Protected", icon::LOCK), TEXT_DIM);
+                    theme::badge(ui, format!("{} Protected", icon::LOCK), theme::text_dim());
                 }
                 if a.provisioned {
-                    theme::badge(ui, "Installs for new users", YELLOW).on_hover_text("Provisioned: Windows installs it for every new account.");
+                    theme::badge(ui, "Installs for new users", theme::yellow()).on_hover_text("Provisioned: Windows installs it for every new account.");
                 }
             });
             ui.add_space(10.0);
             callout(ui, color, verdict_icon(a.verdict), a.verdict.label(), &a.reason);
             if !a.description.is_empty() {
                 ui.add_space(8.0);
-                ui.add(Label::new(RichText::new(&a.description).color(TEXT_DIM)).wrap());
+                ui.add(Label::new(RichText::new(&a.description).color(theme::text_dim())).wrap());
             }
             ui.add_space(8.0);
             egui::Grid::new("app_grid").num_columns(2).spacing(vec2(10.0, 6.0)).show(ui, |ui| {
                 let mut row = |k: &str, v: String, mono: bool| {
-                    ui.label(RichText::new(k).small().color(TEXT_DIM));
+                    ui.label(RichText::new(k).small().color(theme::text_dim()));
                     let t = if mono { RichText::new(v).monospace() } else { RichText::new(v) };
                     ui.add(Label::new(t).wrap());
                     ui.end_row();
@@ -574,7 +574,7 @@ impl DebloatManager {
             let mut close = false;
             let d = self.dialog.as_mut().unwrap();
             let modal = egui::Modal::new(Id::new("debloat_confirm"))
-                .frame(egui::Frame::new().fill(theme::CARD).stroke(Stroke::new(2.0, color)).corner_radius(CornerRadius::same(12)).inner_margin(Margin::same(20)))
+                .frame(egui::Frame::new().fill(theme::card()).stroke(Stroke::new(2.0, color)).corner_radius(CornerRadius::same(12)).inner_margin(Margin::same(20)))
                 .show(ctx, |ui| {
                     ui.set_width(520.0);
                     ui.horizontal(|ui| {
@@ -592,8 +592,8 @@ impl DebloatManager {
                     });
                     ui.add_space(8.0);
                     match worst {
-                        Verdict::Keep => callout(ui, RED, icon::WARNING_OCTAGON, "Includes apps you should keep", "Removing these can break Windows features or stop you installing apps, and some can't be reinstalled easily."),
-                        Verdict::Caution => callout(ui, ORANGE, icon::WARNING, "Includes apps that affect features", "You may lose codecs, game sign-in, hardware settings or a default app. Check the list above."),
+                        Verdict::Keep => callout(ui, theme::red(), icon::WARNING_OCTAGON, "Includes apps you should keep", "Removing these can break Windows features or stop you installing apps, and some can't be reinstalled easily."),
+                        Verdict::Caution => callout(ui, theme::orange(), icon::WARNING, "Includes apps that affect features", "You may lose codecs, game sign-in, hardware settings or a default app. Check the list above."),
                         _ => {}
                     }
                     ui.add_space(8.0);
@@ -604,7 +604,7 @@ impl DebloatManager {
                         ui.checkbox(&mut d.deprovision, "Don't reinstall for new accounts or after feature updates");
                     });
                     if !elevated {
-                        ui.label(RichText::new(format!("{} All-users options need administrator rights.", icon::LOCK)).small().color(ORANGE));
+                        ui.label(RichText::new(format!("{} All-users options need administrator rights.", icon::LOCK)).small().color(theme::orange()));
                     }
                     ui.add_space(8.0);
                     let ready = match worst {
@@ -619,10 +619,10 @@ impl DebloatManager {
                         }
                         _ => true,
                     };
-                    ui.label(RichText::new(format!("{} Reinstall any of them later from History or the Microsoft Store.", icon::ARROW_COUNTER_CLOCKWISE)).small().color(TEXT_DIM));
+                    ui.label(RichText::new(format!("{} Reinstall any of them later from History or the Microsoft Store.", icon::ARROW_COUNTER_CLOCKWISE)).small().color(theme::text_dim()));
                     ui.add_space(12.0);
                     ui.horizontal(|ui| {
-                        if theme::danger_button(ui, format!("{} Remove", icon::TRASH), RED, ready).clicked() {
+                        if theme::danger_button(ui, format!("{} Remove", icon::TRASH), theme::red(), ready).clicked() {
                             go = true;
                         }
                         if ui.button("Cancel").clicked() {
@@ -649,7 +649,7 @@ impl DebloatManager {
                 });
                 ui.add_space(8.0);
                 let frac = if self.job_total == 0 { 0.0 } else { *i as f32 / self.job_total as f32 };
-                ui.add(egui::ProgressBar::new(frac).fill(ACCENT));
+                ui.add(egui::ProgressBar::new(frac).fill(theme::accent()));
             });
         }
 
@@ -660,25 +660,25 @@ impl DebloatManager {
             let modal = egui::Modal::new(Id::new("debloat_history")).show(ctx, |ui| {
                 ui.set_width(640.0);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new(icon::CLOCK_COUNTER_CLOCKWISE).size(24.0).color(ACCENT));
+                    ui.label(RichText::new(icon::CLOCK_COUNTER_CLOCKWISE).size(24.0).color(theme::accent()));
                     ui.label(RichText::new("Removed apps").font(FontId::new(18.0, theme::heading_family())));
                 });
-                ui.label(RichText::new(format!("Saved in {}", RemovalLog::location())).small().color(TEXT_DIM));
+                ui.label(RichText::new(format!("Saved in {}", RemovalLog::location())).small().color(theme::text_dim()));
                 ui.add_space(8.0);
                 if log.removed.is_empty() {
-                    ui.label(RichText::new("No apps removed yet.").color(TEXT_DIM));
+                    ui.label(RichText::new("No apps removed yet.").color(theme::text_dim()));
                 }
                 egui::ScrollArea::vertical().max_height(380.0).show(ui, |ui| {
                     egui::Grid::new("debloat_hist").num_columns(4).striped(true).spacing(vec2(12.0, 8.0)).show(ui, |ui| {
                         for (idx, e) in log.removed.iter().enumerate().rev() {
-                            ui.label(RichText::new(journal::format_time(e.when)).small().color(TEXT_DIM));
+                            ui.label(RichText::new(journal::format_time(e.when)).small().color(theme::text_dim()));
                             ui.vertical(|ui| {
                                 ui.label(RichText::new(&e.display_name).strong());
-                                ui.label(RichText::new(&e.name).small().color(TEXT_DIM));
+                                ui.label(RichText::new(&e.name).small().color(theme::text_dim()));
                             });
-                            ui.label(RichText::new(if e.all_users { "All users" } else { "My account" }).color(TEXT_DIM));
+                            ui.label(RichText::new(if e.all_users { "All users" } else { "My account" }).color(theme::text_dim()));
                             if e.reinstalled {
-                                ui.label(RichText::new("Reinstalled").color(TEXT_DIM));
+                                ui.label(RichText::new("Reinstalled").color(theme::text_dim()));
                             } else if ui.button(format!("{} Reinstall", icon::ARROW_COUNTER_CLOCKWISE)).clicked() {
                                 reinstall = Some(idx);
                             }

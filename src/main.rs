@@ -3,6 +3,7 @@
 
 mod app;
 mod icon_art;
+mod settings;
 mod theme;
 mod toast;
 mod tools;

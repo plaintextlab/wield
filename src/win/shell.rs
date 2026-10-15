@@ -41,3 +41,27 @@ fn url_encode(s: &str) -> String {
     }
     out
 }
+
+/// Shows the Windows "Open" dialog filtered to programs. Blocks until closed; call from a worker thread.
+pub fn pick_program() -> Option<std::path::PathBuf> {
+    use windows::Win32::UI::Controls::Dialogs::{GetOpenFileNameW, OFN_FILEMUSTEXIST, OFN_NOCHANGEDIR, OPENFILENAMEW};
+    let filter: Vec<u16> = "Programs (*.exe)\0*.exe\0All files (*.*)\0*.*\0\0".encode_utf16().collect();
+    let title = wide("Choose a program to block");
+    let mut file = vec![0u16; 1024];
+    let mut ofn = OPENFILENAMEW {
+        lStructSize: size_of::<OPENFILENAMEW>() as u32,
+        lpstrFilter: PCWSTR(filter.as_ptr()),
+        lpstrFile: windows::core::PWSTR(file.as_mut_ptr()),
+        nMaxFile: file.len() as u32,
+        lpstrTitle: PCWSTR(title.as_ptr()),
+        Flags: OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR,
+        ..Default::default()
+    };
+    unsafe {
+        if !GetOpenFileNameW(&mut ofn).as_bool() {
+            return None;
+        }
+    }
+    let len = file.iter().position(|&c| c == 0).unwrap_or(0);
+    (len > 0).then(|| std::path::PathBuf::from(String::from_utf16_lossy(&file[..len])))
+}

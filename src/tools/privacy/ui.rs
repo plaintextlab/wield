@@ -7,7 +7,7 @@ use egui_phosphor::regular as icon;
 
 use super::catalog::{Category, TWEAKS};
 use super::engine::{self, Backup, State};
-use crate::theme::{self, ACCENT, GREEN, ORANGE, RED, TEXT_DIM, YELLOW};
+use crate::theme;
 use crate::toast::Toasts;
 use crate::tools::startup::actions::friendly;
 use crate::win::sysver::OsInfo;
@@ -134,8 +134,8 @@ impl PrivacyManager {
             if !self.loaded() {
                 ui.vertical_centered(|ui| {
                     ui.add_space(ui.available_height() * 0.3);
-                    ui.add(egui::Spinner::new().size(36.0).color(ACCENT));
-                    ui.label(RichText::new("Reading your privacy settings…").color(TEXT_DIM));
+                    ui.add(egui::Spinner::new().size(36.0).color(theme::accent()));
+                    ui.label(RichText::new("Reading your privacy settings…").color(theme::text_dim()));
                 });
                 return;
             }
@@ -159,13 +159,13 @@ impl PrivacyManager {
         let ctx = ui.ctx().clone();
         let busy = self.job_rx.is_some() || self.scan_rx.is_some();
         ui.horizontal(|ui| {
-            ui.label(RichText::new(icon::EYE_SLASH).size(26.0).color(ACCENT));
+            ui.label(RichText::new(icon::EYE_SLASH).size(26.0).color(theme::accent()));
             ui.vertical(|ui| {
                 ui.heading("Privacy & Telemetry");
-                ui.label(RichText::new("Turn off data collection, ads and tracking. Every switch can be turned back.").color(TEXT_DIM));
+                ui.label(RichText::new("Turn off data collection, ads and tracking. Every switch can be turned back.").color(theme::text_dim()));
             });
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if ui.add_enabled(!busy, egui::Button::new(RichText::new(format!("{} Apply all recommended", icon::SHIELD_CHECK)).color(Color32::WHITE)).fill(ACCENT)).clicked() {
+                if ui.add_enabled(!busy, egui::Button::new(RichText::new(format!("{} Apply all recommended", icon::SHIELD_CHECK)).color(theme::on_accent())).fill(theme::accent())).clicked() {
                     self.confirm_recommended = true;
                 }
                 if ui
@@ -187,7 +187,7 @@ impl PrivacyManager {
 
         if !elevated {
             let mut clicked = false;
-            banner(ui, ORANGE, icon::LOCK, "Settings marked with a lock apply to the whole PC and need administrator rights. Your personal settings can be changed now.", Some(("Restart as administrator", &mut clicked)));
+            banner(ui, theme::orange(), icon::LOCK, "Settings marked with a lock apply to the whole PC and need administrator rights. Your personal settings can be changed now.", Some(("Restart as administrator", &mut clicked)));
             if clicked {
                 relaunch(&ctx, toasts);
             }
@@ -198,13 +198,13 @@ impl PrivacyManager {
             ui.add_space(8.0);
             ui.horizontal_wrapped(|ui| {
                 let all_sel = self.filter.is_none();
-                if ui.add(egui::Button::new(RichText::new(format!("All  {}", TWEAKS.len())).color(if all_sel { theme::TEXT } else { TEXT_DIM })).selected(all_sel).frame_when_inactive(false)).clicked() {
+                if ui.add(egui::Button::new(RichText::new(format!("All  {}", TWEAKS.len())).color(if all_sel { theme::text() } else { theme::text_dim() })).selected(all_sel).frame_when_inactive(false)).clicked() {
                     self.filter = None;
                 }
                 for cat in Category::ALL {
                     let (on, total) = self.category_counts(cat);
                     let sel = self.filter == Some(cat);
-                    let text = RichText::new(format!("{} {}  {on}/{total}", category_icon(cat), cat.label())).color(if sel { theme::TEXT } else { TEXT_DIM });
+                    let text = RichText::new(format!("{} {}  {on}/{total}", category_icon(cat), cat.label())).color(if sel { theme::text() } else { theme::text_dim() });
                     if ui.add(egui::Button::new(text).selected(sel).frame_when_inactive(false)).clicked() {
                         self.filter = Some(cat);
                     }
@@ -222,11 +222,11 @@ impl PrivacyManager {
         let (on, total) = self.score();
         let frac = if total == 0 { 1.0 } else { on as f32 / total as f32 };
         let color = if frac >= 0.85 {
-            GREEN
+            theme::green()
         } else if frac >= 0.5 {
-            YELLOW
+            theme::yellow()
         } else {
-            RED
+            theme::red()
         };
         theme::card_frame().inner_margin(Margin::symmetric(16, 12)).show(ui, |ui| {
             ui.set_width(ui.available_width());
@@ -235,10 +235,10 @@ impl PrivacyManager {
                 ui.vertical(|ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(format!("{on} / {total}")).font(FontId::new(24.0, theme::heading_family())).color(color));
-                        ui.label(RichText::new("recommended protections on").color(TEXT_DIM));
+                        ui.label(RichText::new("recommended protections on").color(theme::text_dim()));
                     });
                     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width().min(520.0), 8.0), Sense::hover());
-                    ui.painter().rect_filled(rect, CornerRadius::same(4), theme::BORDER);
+                    ui.painter().rect_filled(rect, CornerRadius::same(4), theme::border());
                     let mut fill = rect;
                     fill.set_width(rect.width() * frac);
                     ui.painter().rect_filled(fill, CornerRadius::same(4), color);
@@ -251,7 +251,7 @@ impl PrivacyManager {
                             if self.os.is_enterprise_class() { "full telemetry control" } else { "telemetry minimum: Required" }
                         ))
                         .small()
-                        .color(TEXT_DIM),
+                        .color(theme::text_dim()),
                     );
                 });
             });
@@ -260,10 +260,10 @@ impl PrivacyManager {
 
     fn section(&mut self, ui: &mut Ui, cat: Category, elevated: bool, toasts: &mut Toasts) {
         ui.horizontal(|ui| {
-            ui.label(RichText::new(category_icon(cat)).size(20.0).color(ACCENT));
+            ui.label(RichText::new(category_icon(cat)).size(20.0).color(theme::accent()));
             ui.label(RichText::new(cat.label()).font(FontId::new(17.0, theme::heading_family())));
         });
-        ui.label(RichText::new(cat.blurb()).color(TEXT_DIM));
+        ui.label(RichText::new(cat.blurb()).color(theme::text_dim()));
         ui.add_space(6.0);
         theme::card_frame().inner_margin(Margin::symmetric(4, 4)).show(ui, |ui| {
             ui.set_width(ui.available_width());
@@ -271,7 +271,7 @@ impl PrivacyManager {
             for (n, i) in indices.iter().enumerate() {
                 if n > 0 {
                     let r = ui.available_rect_before_wrap();
-                    ui.painter().hline(r.x_range(), r.top(), Stroke::new(1.0, theme::BORDER));
+                    ui.painter().hline(r.x_range(), r.top(), Stroke::new(1.0, theme::border()));
                 }
                 ui.push_id(TWEAKS[*i].id, |ui| self.row(ui, *i, elevated, toasts));
             }
@@ -289,7 +289,7 @@ impl PrivacyManager {
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
                     ui.add_space(2.0);
-                    let r = theme::switch(ui, state == State::On, GREEN, available && !busy);
+                    let r = theme::switch(ui, state == State::On, theme::green(), available && !busy);
                     let tip = match &state {
                         State::On => "Protection on. Click to restore the Windows default.".to_string(),
                         State::Off => "Click to turn this protection on.".to_string(),
@@ -303,35 +303,35 @@ impl PrivacyManager {
                     ui.horizontal_wrapped(|ui| {
                         let mut title = RichText::new(t.title).strong();
                         if !available {
-                            title = title.color(TEXT_DIM);
+                            title = title.color(theme::text_dim());
                         }
                         ui.label(title);
                         if t.recommended {
-                            theme::badge(ui, "Recommended", GREEN);
+                            theme::badge(ui, "Recommended", theme::green());
                         }
                         if t.needs_admin() {
-                            theme::badge(ui, format!("{} All users", icon::LOCK), if elevated { TEXT_DIM } else { ORANGE })
+                            theme::badge(ui, format!("{} All users", icon::LOCK), if elevated { theme::text_dim() } else { theme::orange() })
                                 .on_hover_text("Machine-wide setting. Needs administrator rights.");
                         }
                         match &state {
                             State::Partial => {
-                                theme::badge(ui, "Partly applied", YELLOW);
+                                theme::badge(ui, "Partly applied", theme::yellow());
                             }
                             State::Unavailable(why) => {
-                                theme::badge(ui, "Not available", TEXT_DIM).on_hover_text(why);
+                                theme::badge(ui, "Not available", theme::text_dim()).on_hover_text(why);
                             }
                             _ => {}
                         }
                     });
-                    ui.add(Label::new(RichText::new(t.summary).color(TEXT_DIM)).wrap());
+                    ui.add(Label::new(RichText::new(t.summary).color(theme::text_dim())).wrap());
                     if t.tradeoff != "None." {
-                        ui.add(Label::new(RichText::new(format!("{} Trade-off: {}", icon::INFO, t.tradeoff)).small().color(ORANGE.gamma_multiply(0.85))).wrap());
+                        ui.add(Label::new(RichText::new(format!("{} Trade-off: {}", icon::INFO, t.tradeoff)).small().color(theme::orange().gamma_multiply(0.85))).wrap());
                     }
                     if let Some(n) = t.note {
-                        ui.add(Label::new(RichText::new(n).small().color(TEXT_DIM)).wrap());
+                        ui.add(Label::new(RichText::new(n).small().color(theme::text_dim())).wrap());
                     }
                     if let State::Unavailable(why) = &state {
-                        ui.label(RichText::new(why).small().color(TEXT_DIM));
+                        ui.label(RichText::new(why).small().color(theme::text_dim()));
                     }
                 });
             });
@@ -383,7 +383,7 @@ impl PrivacyManager {
             let modal = egui::Modal::new(Id::new("privacy_apply")).show(ctx, |ui| {
                 ui.set_width(520.0);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new(icon::SHIELD_CHECK).size(28.0).color(ACCENT));
+                    ui.label(RichText::new(icon::SHIELD_CHECK).size(28.0).color(theme::accent()));
                     ui.label(RichText::new("Apply recommended protections").font(FontId::new(18.0, theme::heading_family())));
                 });
                 ui.add_space(8.0);
@@ -393,19 +393,19 @@ impl PrivacyManager {
                     ui.label(format!("These {} settings will be changed:", todo.len()));
                     egui::ScrollArea::vertical().max_height(260.0).show(ui, |ui| {
                         for &i in &todo {
-                            ui.label(RichText::new(format!("{} {}", icon::CHECK, TWEAKS[i].title)).color(TEXT_DIM));
+                            ui.label(RichText::new(format!("{} {}", icon::CHECK, TWEAKS[i].title)).color(theme::text_dim()));
                         }
                     });
                 }
                 if skipped > 0 {
                     ui.add_space(6.0);
-                    ui.label(RichText::new(format!("{} {skipped} all-users setting(s) skipped: restart as administrator to include them.", icon::LOCK)).color(ORANGE));
+                    ui.label(RichText::new(format!("{} {skipped} all-users setting(s) skipped: restart as administrator to include them.", icon::LOCK)).color(theme::orange()));
                 }
                 ui.add_space(6.0);
-                ui.label(RichText::new(format!("Original values are backed up to {}", Backup::location())).small().color(TEXT_DIM));
+                ui.label(RichText::new(format!("Original values are backed up to {}", Backup::location())).small().color(theme::text_dim()));
                 ui.add_space(12.0);
                 ui.horizontal(|ui| {
-                    if ui.add_enabled(!todo.is_empty(), egui::Button::new(RichText::new("Apply").color(Color32::WHITE)).fill(ACCENT)).clicked() {
+                    if ui.add_enabled(!todo.is_empty(), egui::Button::new(RichText::new("Apply").color(theme::on_accent())).fill(theme::accent())).clicked() {
                         go = true;
                     }
                     if ui.button("Cancel").clicked() {
@@ -445,7 +445,7 @@ impl PrivacyManager {
             let modal = egui::Modal::new(Id::new("privacy_restore")).show(ctx, |ui| {
                 ui.set_width(460.0);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new(icon::ARROW_COUNTER_CLOCKWISE).size(28.0).color(ORANGE));
+                    ui.label(RichText::new(icon::ARROW_COUNTER_CLOCKWISE).size(28.0).color(theme::orange()));
                     ui.label(RichText::new("Restore original settings?").font(FontId::new(18.0, theme::heading_family())));
                 });
                 ui.add_space(8.0);
@@ -454,11 +454,11 @@ impl PrivacyManager {
                     self.backup_count
                 )).wrap());
                 if !elevated {
-                    ui.label(RichText::new("All-users values need administrator rights and will be kept for a later retry.").small().color(ORANGE));
+                    ui.label(RichText::new("All-users values need administrator rights and will be kept for a later retry.").small().color(theme::orange()));
                 }
                 ui.add_space(12.0);
                 ui.horizontal(|ui| {
-                    if theme::danger_button(ui, "Restore", ORANGE, true).clicked() {
+                    if theme::danger_button(ui, "Restore", theme::orange(), true).clicked() {
                         go = true;
                     }
                     if ui.button("Cancel").clicked() {
@@ -492,7 +492,7 @@ impl PrivacyManager {
             let modal = egui::Modal::new(Id::new("privacy_admin")).show(ctx, |ui| {
                 ui.set_width(420.0);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new(icon::LOCK).size(28.0).color(ORANGE));
+                    ui.label(RichText::new(icon::LOCK).size(28.0).color(theme::orange()));
                     ui.label(RichText::new("Administrator rights needed").font(FontId::new(18.0, theme::heading_family())));
                 });
                 ui.add_space(8.0);

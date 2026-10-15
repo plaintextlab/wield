@@ -12,7 +12,7 @@ use super::actions::{self, ServiceMode};
 use super::journal::{self, Journal};
 use super::model::{Criticality, Impact, SourceKind, StartupItem};
 use super::scan::{self, ScanMsg};
-use crate::theme::{self, ACCENT, GREEN, ORANGE, RED, TEXT_DIM};
+use crate::theme;
 use crate::toast::Toasts;
 use crate::win::{elevation, fileinfo::format_bytes, shell};
 
@@ -221,9 +221,9 @@ impl StartupManager {
             egui::CentralPanel::no_frame().show(ui, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.add_space(ui.available_height() * 0.35);
-                    ui.add(egui::Spinner::new().size(36.0).color(ACCENT));
+                    ui.add(egui::Spinner::new().size(36.0).color(theme::accent()));
                     ui.add_space(10.0);
-                    ui.label(RichText::new(&self.progress).color(TEXT_DIM));
+                    ui.label(RichText::new(&self.progress).color(theme::text_dim()));
                 });
             });
             return;
@@ -233,7 +233,7 @@ impl StartupManager {
             .resizable(true)
             .default_size(320.0)
             .size_range(280.0..=620.0)
-            .frame(egui::Frame::new().fill(theme::SIDEBAR).inner_margin(Margin::same(16)))
+            .frame(egui::Frame::new().fill(theme::sidebar()).inner_margin(Margin::same(16)))
             .show(ui, |ui| self.details(ui, elevated, toasts));
 
         egui::CentralPanel::no_frame().show(ui, |ui| {
@@ -248,12 +248,12 @@ impl StartupManager {
     fn header(&mut self, ui: &mut Ui, elevated: bool, toasts: &mut Toasts) {
         let ctx = ui.ctx().clone();
         ui.horizontal(|ui| {
-            ui.label(RichText::new(icon::ROCKET_LAUNCH).size(26.0).color(ACCENT));
+            ui.label(RichText::new(icon::ROCKET_LAUNCH).size(26.0).color(theme::accent()));
             ui.vertical(|ui| {
                 ui.heading("Startup Manager");
                 ui.label(
                     RichText::new("Apps, services and scheduled tasks that start with Windows. Every change is reversible.")
-                        .color(TEXT_DIM),
+                        .color(theme::text_dim()),
                 );
             });
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -311,7 +311,7 @@ impl StartupManager {
         if !elevated
             && self.banner(
                 ui,
-                ORANGE,
+                theme::orange(),
                 icon::LOCK,
                 "Running without administrator rights. Services, all-users entries and Windows tasks are read-only.",
                 Some("Restart as administrator"),
@@ -321,7 +321,7 @@ impl StartupManager {
         }
         let warnings = self.warnings.clone();
         for w in warnings {
-            self.banner(ui, ORANGE, icon::WARNING, &w, None);
+            self.banner(ui, theme::orange(), icon::WARNING, &w, None);
         }
 
         if self.scanned {
@@ -363,10 +363,10 @@ impl StartupManager {
         let s = scan::summarize(&self.items);
         ui.columns(4, |cols| {
             let tiles = [
-                (icon::LIST_CHECKS, "Startup entries", s.total, ACCENT, "Everything Wield found"),
-                (icon::LIGHTNING, "Enabled", s.enabled, theme::TEXT, "Show enabled entries"),
-                (icon::GAUGE, "High impact, enabled", s.high_enabled, RED, "Show enabled high-impact entries"),
-                (icon::CHECK_CIRCLE, "Safe to disable, enabled", s.safe_enabled, GREEN, "Show enabled entries that are safe to turn off"),
+                (icon::LIST_CHECKS, "Startup entries", s.total, theme::accent(), "Everything Wield found"),
+                (icon::LIGHTNING, "Enabled", s.enabled, theme::text(), "Show enabled entries"),
+                (icon::GAUGE, "High impact, enabled", s.high_enabled, theme::red(), "Show enabled high-impact entries"),
+                (icon::CHECK_CIRCLE, "Safe to disable, enabled", s.safe_enabled, theme::green(), "Show enabled entries that are safe to turn off"),
             ];
             for (i, (ic, label, value, color, hint)) in tiles.into_iter().enumerate() {
                 let ui = &mut cols[i];
@@ -378,7 +378,7 @@ impl StartupManager {
                             ui.label(RichText::new(ic).size(22.0).color(color));
                             ui.vertical(|ui| {
                                 ui.label(RichText::new(value.to_string()).font(FontId::new(22.0, theme::heading_family())).color(color));
-                                ui.label(RichText::new(label).small().color(TEXT_DIM));
+                                ui.label(RichText::new(label).small().color(theme::text_dim()));
                             });
                         });
                     })
@@ -413,7 +413,7 @@ impl StartupManager {
             for tab in Tab::ALL {
                 let count = self.items.iter().filter(|i| tab.matches(i.source)).count();
                 let selected = self.tab == tab;
-                let text = RichText::new(format!("{}  {count}", tab.label())).color(if selected { theme::TEXT } else { TEXT_DIM });
+                let text = RichText::new(format!("{}  {count}", tab.label())).color(if selected { theme::text() } else { theme::text_dim() });
                 if ui.add(egui::Button::new(text).selected(selected).frame_when_inactive(false)).clicked() {
                     self.tab = tab;
                 }
@@ -473,7 +473,7 @@ impl StartupManager {
         let rows = self.visible();
         if rows.is_empty() {
             ui.add_space(40.0);
-            ui.vertical_centered(|ui| ui.label(RichText::new("No entries match the current filters.").color(TEXT_DIM)));
+            ui.vertical_centered(|ui| ui.label(RichText::new("No entries match the current filters.").color(theme::text_dim())));
             return;
         }
         let mut clicked: Option<String> = None;
@@ -488,7 +488,7 @@ impl StartupManager {
                 (Some(c), Some((s, asc))) if c == s => if asc { " ▲" } else { " ▼" },
                 _ => "",
             };
-            let resp = ui.add(Label::new(RichText::new(format!("{text}{arrow}")).small().strong().color(TEXT_DIM)).selectable(false).sense(Sense::click()));
+            let resp = ui.add(Label::new(RichText::new(format!("{text}{arrow}")).small().strong().color(theme::text_dim())).selectable(false).sense(Sense::click()));
             if let Some(c) = col {
                 if resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
                     *sort_click = Some(c);
@@ -544,25 +544,25 @@ impl StartupManager {
                             ui.spacing_mut().item_spacing.y = 1.0;
                             let mut name = RichText::new(&item.name).strong();
                             if !item.enabled {
-                                name = name.color(TEXT_DIM);
+                                name = name.color(theme::text_dim());
                             }
                             ui.horizontal(|ui| {
                                 ui.spacing_mut().item_spacing.x = 4.0;
                                 if item.needs_admin && !elevated && item.can_toggle {
-                                    ui.label(RichText::new(icon::LOCK).small().color(TEXT_DIM));
+                                    ui.label(RichText::new(icon::LOCK).small().color(theme::text_dim()));
                                 }
                                 ui.add(Label::new(name).truncate().selectable(false));
                             });
                             let sub = item.description.clone().unwrap_or_else(|| item.command.clone());
-                            ui.add(Label::new(RichText::new(sub).small().color(TEXT_DIM)).truncate().selectable(false));
+                            ui.add(Label::new(RichText::new(sub).small().color(theme::text_dim())).truncate().selectable(false));
                         });
                     });
                     row.col(|ui| {
-                        ui.add(Label::new(RichText::new(item.publisher.as_deref().unwrap_or("—")).color(TEXT_DIM)).truncate().selectable(false));
+                        ui.add(Label::new(RichText::new(item.publisher.as_deref().unwrap_or("—")).color(theme::text_dim())).truncate().selectable(false));
                     });
                     row.col(|ui| {
                         ui.add(
-                            Label::new(RichText::new(format!("{} {}", source_icon(item.source), item.source.label())).color(TEXT_DIM))
+                            Label::new(RichText::new(format!("{} {}", source_icon(item.source), item.source.label())).color(theme::text_dim()))
                                 .truncate()
                                 .selectable(false),
                         );
@@ -575,11 +575,11 @@ impl StartupManager {
                     });
                     row.col(|ui| {
                         let color = if item.status_text == "MODIFIED" {
-                            RED
+                            theme::red()
                         } else if item.enabled {
-                            theme::TEXT
+                            theme::text()
                         } else {
-                            TEXT_DIM
+                            theme::text_dim()
                         };
                         ui.add(Label::new(RichText::new(&item.status_text).color(color)).truncate().selectable(false));
                     });
@@ -648,9 +648,9 @@ impl StartupManager {
         let Some(item) = self.selected.as_ref().and_then(|id| self.items.iter().find(|i| &i.id == id)).cloned() else {
             ui.add_space(60.0);
             ui.vertical_centered(|ui| {
-                ui.label(RichText::new(icon::CURSOR_CLICK).size(40.0).color(TEXT_DIM));
+                ui.label(RichText::new(icon::CURSOR_CLICK).size(40.0).color(theme::text_dim()));
                 ui.add_space(8.0);
-                ui.label(RichText::new("Select an entry to see what it is,\nwhy it's rated that way, and what\ndisabling it would affect.").color(TEXT_DIM));
+                ui.label(RichText::new("Select an entry to see what it is,\nwhy it's rated that way, and what\ndisabling it would affect.").color(theme::text_dim()));
                 ui.add_space(24.0);
                 legend(ui);
             });
@@ -664,7 +664,7 @@ impl StartupManager {
             ui.horizontal_wrapped(|ui| {
                 theme::badge(ui, format!("{} {}", theme::crit_icon(item.criticality), item.criticality.label()), crit);
                 theme::badge(ui, format!("{} {} impact", icon::GAUGE, item.impact.label()), theme::impact_color(item.impact));
-                theme::badge(ui, format!("{} {}", source_icon(item.source), item.source.label()), ACCENT);
+                theme::badge(ui, format!("{} {}", source_icon(item.source), item.source.label()), theme::accent());
             });
             ui.add_space(10.0);
 
@@ -675,11 +675,11 @@ impl StartupManager {
                 }
                 ui.label(RichText::new(&item.status_text).strong());
                 if item.needs_admin && !elevated && item.can_toggle {
-                    ui.label(RichText::new(format!("{} needs administrator", icon::LOCK)).small().color(ORANGE));
+                    ui.label(RichText::new(format!("{} needs administrator", icon::LOCK)).small().color(theme::orange()));
                 }
             });
             if let Some(r) = &item.readonly_reason {
-                ui.label(RichText::new(format!("{} {r}", icon::INFO)).small().color(TEXT_DIM));
+                ui.label(RichText::new(format!("{} {r}", icon::INFO)).small().color(theme::text_dim()));
             }
             ui.add_space(10.0);
 
@@ -689,13 +689,13 @@ impl StartupManager {
             ui.add_space(10.0);
 
             if let Some(d) = &item.description {
-                ui.add(Label::new(RichText::new(d).color(TEXT_DIM)).wrap());
+                ui.add(Label::new(RichText::new(d).color(theme::text_dim())).wrap());
                 ui.add_space(8.0);
             }
 
             egui::Grid::new("details_grid").num_columns(2).spacing(vec2(10.0, 6.0)).striped(false).show(ui, |ui| {
                 let row = |ui: &mut Ui, k: &str, v: RichText| {
-                    ui.label(RichText::new(k).small().color(TEXT_DIM));
+                    ui.label(RichText::new(k).small().color(theme::text_dim()));
                     ui.add(Label::new(v).wrap());
                     ui.end_row();
                 };
@@ -703,7 +703,7 @@ impl StartupManager {
                 if let Some(t) = &item.target {
                     let mut v = RichText::new(t.display().to_string()).monospace();
                     if !item.target_exists {
-                        v = RichText::new(format!("{} (file missing)", t.display())).monospace().color(RED);
+                        v = RichText::new(format!("{} (file missing)", t.display())).monospace().color(theme::red());
                     }
                     row(ui, "Program", v);
                 }
@@ -717,13 +717,13 @@ impl StartupManager {
                 for (k, v) in &item.facts {
                     let mut t = RichText::new(v);
                     if k == "Warning" {
-                        t = t.color(RED);
+                        t = t.color(theme::red());
                     }
                     row(ui, k, t);
                 }
             });
             ui.add_space(8.0);
-            ui.label(RichText::new("Command").small().color(TEXT_DIM));
+            ui.label(RichText::new("Command").small().color(theme::text_dim()));
             let mut cmd = item.command.clone();
             ui.add(TextEdit::multiline(&mut cmd).font(egui::TextStyle::Monospace).desired_rows(2).desired_width(f32::INFINITY).interactive(true));
             ui.add_space(8.0);
@@ -758,7 +758,7 @@ impl StartupManager {
             let mut confirm = false;
             let mut cancel = false;
             let modal = egui::Modal::new(Id::new("confirm_disable"))
-                .frame(egui::Frame::new().fill(theme::CARD).stroke(Stroke::new(2.0, color)).corner_radius(CornerRadius::same(12)).inner_margin(Margin::same(20)))
+                .frame(egui::Frame::new().fill(theme::card()).stroke(Stroke::new(2.0, color)).corner_radius(CornerRadius::same(12)).inner_margin(Margin::same(20)))
                 .show(ctx, |ui| {
                     ui.set_width(480.0);
                     ui.horizontal(|ui| {
@@ -773,7 +773,7 @@ impl StartupManager {
                         Criticality::Critical => {
                             callout(
                                 ui,
-                                RED,
+                                theme::red(),
                                 icon::WARNING_OCTAGON,
                                 "This is a critical Windows component",
                                 &format!(
@@ -783,10 +783,10 @@ impl StartupManager {
                             );
                         }
                         Criticality::Important => {
-                            callout(ui, ORANGE, icon::WARNING, "This affects a Windows feature or your hardware", &item.criticality_reason);
+                            callout(ui, theme::orange(), icon::WARNING, "This affects a Windows feature or your hardware", &item.criticality_reason);
                         }
                         Criticality::Optional => {
-                            callout(ui, GREEN, icon::CHECK_CIRCLE, "Safe to disable", &item.criticality_reason);
+                            callout(ui, theme::green(), icon::CHECK_CIRCLE, "Safe to disable", &item.criticality_reason);
                         }
                     }
                     ui.add_space(10.0);
@@ -796,7 +796,7 @@ impl StartupManager {
                         ui.radio_value(&mut p.mode, ServiceMode::Manual, "Manual — only starts when another program needs it (recommended)");
                         ui.radio_value(&mut p.mode, ServiceMode::Disabled, "Disabled — never starts, even when needed");
                         if p.mode == ServiceMode::Disabled && item.criticality != Criticality::Optional {
-                            ui.label(RichText::new("Disabled services can break things that depend on them. Manual is much safer.").small().color(ORANGE));
+                            ui.label(RichText::new("Disabled services can break things that depend on them. Manual is much safer.").small().color(theme::orange()));
                         }
                         ui.add_space(8.0);
                     }
@@ -821,7 +821,7 @@ impl StartupManager {
                             if is_service { " Changes take effect at the next restart." } else { "" }
                         ))
                         .small()
-                        .color(TEXT_DIM),
+                        .color(theme::text_dim()),
                     );
                     ui.add_space(12.0);
                     ui.horizontal(|ui| {
@@ -865,7 +865,7 @@ impl StartupManager {
             let modal = egui::Modal::new(Id::new("admin_prompt")).show(ctx, |ui| {
                 ui.set_width(420.0);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new(icon::LOCK).size(28.0).color(ORANGE));
+                    ui.label(RichText::new(icon::LOCK).size(28.0).color(theme::orange()));
                     ui.label(RichText::new("Administrator rights needed").font(FontId::new(18.0, theme::heading_family())));
                 });
                 ui.add_space(8.0);
@@ -894,25 +894,25 @@ impl StartupManager {
             let modal = egui::Modal::new(Id::new("history")).show(ctx, |ui| {
                 ui.set_width(640.0);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new(icon::CLOCK_COUNTER_CLOCKWISE).size(24.0).color(ACCENT));
+                    ui.label(RichText::new(icon::CLOCK_COUNTER_CLOCKWISE).size(24.0).color(theme::accent()));
                     ui.label(RichText::new("Change history").font(FontId::new(18.0, theme::heading_family())));
                 });
-                ui.label(RichText::new(format!("Saved in {}", Journal::location())).small().color(TEXT_DIM));
+                ui.label(RichText::new(format!("Saved in {}", Journal::location())).small().color(theme::text_dim()));
                 ui.add_space(8.0);
                 if journal.entries.is_empty() {
-                    ui.label(RichText::new("No changes yet.").color(TEXT_DIM));
+                    ui.label(RichText::new("No changes yet.").color(theme::text_dim()));
                 }
                 egui::ScrollArea::vertical().max_height(380.0).show(ui, |ui| {
                     egui::Grid::new("history_grid").num_columns(4).striped(true).spacing(vec2(12.0, 8.0)).show(ui, |ui| {
                         for (idx, e) in journal.entries.iter().enumerate().rev() {
-                            ui.label(RichText::new(journal::format_time(e.when)).small().color(TEXT_DIM));
+                            ui.label(RichText::new(journal::format_time(e.when)).small().color(theme::text_dim()));
                             ui.vertical(|ui| {
                                 ui.label(RichText::new(&e.item_name).strong());
-                                ui.label(RichText::new(e.source.label()).small().color(TEXT_DIM));
+                                ui.label(RichText::new(e.source.label()).small().color(theme::text_dim()));
                             });
                             ui.label(&e.action);
                             if e.reverted {
-                                ui.label(RichText::new("Reverted").color(TEXT_DIM));
+                                ui.label(RichText::new("Reverted").color(theme::text_dim()));
                             } else if ui.button(format!("{} Revert", icon::ARROW_COUNTER_CLOCKWISE)).clicked() {
                                 revert = Some(idx);
                             }
@@ -986,12 +986,12 @@ fn legend(ui: &mut Ui) {
                 Criticality::Important => "Turns off a feature, driver helper or updates. Asks you to confirm.",
                 Criticality::Critical => "Windows depends on it. You must type DISABLE to confirm.",
             };
-            ui.label(RichText::new(text).small().color(TEXT_DIM));
+            ui.label(RichText::new(text).small().color(theme::text_dim()));
             ui.add_space(4.0);
         }
         ui.separator();
         ui.label(
-            RichText::new("Impact is estimated from memory use, program size, known heavy apps and start mode.").small().color(TEXT_DIM),
+            RichText::new("Impact is estimated from memory use, program size, known heavy apps and start mode.").small().color(theme::text_dim()),
         );
     });
 }

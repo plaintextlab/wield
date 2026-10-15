@@ -1,11 +1,12 @@
 //! Application shell: sidebar navigation, home grid and tool routing.
 
-use eframe::egui::{self, Align, Color32, CornerRadius, FontId, Layout, Margin, RichText, Sense, Stroke, StrokeKind, Ui, UiBuilder, vec2};
+use eframe::egui::{self, Align, CornerRadius, FontId, Layout, Margin, RichText, Sense, Stroke, StrokeKind, Ui, UiBuilder, vec2};
 use egui_phosphor::regular as icon;
 
-use crate::theme::{self, ACCENT, BORDER, GREEN, ORANGE, TEXT_DIM};
+use crate::theme;
 use crate::toast::Toasts;
 use crate::tools::debloat::ui::DebloatManager;
+use crate::tools::network::ui::NetworkManager;
 use crate::tools::privacy::ui::PrivacyManager;
 use crate::tools::startup::ui::StartupManager;
 use crate::win::elevation;
@@ -16,6 +17,7 @@ enum ToolId {
     Startup,
     Privacy,
     Debloat,
+    Network,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -53,7 +55,12 @@ const TOOLS: &[ToolInfo] = &[
     },
     ToolInfo { id: None, icon: icon::BROOM, title: "Disk Cleanup", blurb: "Find and clear temp files, caches and leftovers." },
     ToolInfo { id: None, icon: icon::CLOUD_ARROW_DOWN, title: "Update Control", blurb: "Pause, schedule and tune Windows Update." },
-    ToolInfo { id: None, icon: icon::NETWORK, title: "Network Toolkit", blurb: "DNS, hosts file, adapter reset and diagnostics." },
+    ToolInfo {
+        id: Some(ToolId::Network),
+        icon: icon::NETWORK,
+        title: "Network Toolkit",
+        blurb: "Per-app traffic and blocking, open ports, network scanner, DNS and repairs.",
+    },
     ToolInfo { id: None, icon: icon::TRASH, title: "Uninstaller", blurb: "Remove programs completely, including leftovers." },
     ToolInfo { id: None, icon: icon::CPU, title: "System Info", blurb: "Hardware, drivers and Windows edition at a glance." },
 ];
@@ -66,30 +73,37 @@ pub struct WieldApp {
     startup: StartupManager,
     privacy: PrivacyManager,
     debloat: DebloatManager,
+    network: NetworkManager,
 }
 
 impl WieldApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        theme::install(&cc.egui_ctx);
+        let settings = crate::settings::Settings::load();
+        theme::install(&cc.egui_ctx, settings.dark);
         // `wield.exe --tool startup` opens a tool directly (handy for shortcuts).
         let args: Vec<String> = std::env::args().collect();
         let view = match args.iter().position(|a| a == "--tool").and_then(|i| args.get(i + 1)).map(String::as_str) {
             Some("startup") => View::Tool(ToolId::Startup),
             Some("privacy") => View::Tool(ToolId::Privacy),
             Some("debloat") => View::Tool(ToolId::Debloat),
+            Some("network") => View::Tool(ToolId::Network),
             _ => View::Home,
         };
+        let mut network = NetworkManager::new();
+        if let Some(tab) = args.iter().position(|a| a == "--tab").and_then(|i| args.get(i + 1)) {
+            network.set_tab(tab);
+        }
         let os = os_info();
-        Self { view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
+        Self { view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
     }
 
     fn sidebar(&mut self, ui: &mut Ui) {
         ui.add_space(6.0);
         ui.horizontal(|ui| {
-            ui.label(RichText::new(icon::LIGHTNING).size(26.0).color(ACCENT));
+            ui.label(RichText::new(icon::LIGHTNING).size(26.0).color(theme::orange()));
             ui.vertical(|ui| {
                 ui.label(RichText::new("Wield").font(FontId::new(20.0, theme::heading_family())));
-                ui.label(RichText::new("Windows toolkit").small().color(TEXT_DIM));
+                ui.label(RichText::new("Windows toolkit").small().color(theme::text_dim()));
             });
         });
         ui.add_space(18.0);
@@ -98,7 +112,7 @@ impl WieldApp {
             self.view = View::Home;
         }
         ui.add_space(10.0);
-        ui.label(RichText::new("TOOLS").small().color(TEXT_DIM));
+        ui.label(RichText::new("TOOLS").small().color(theme::text_dim()));
         for t in TOOLS {
             let active = t.id.is_some_and(|id| self.view == View::Tool(id));
             if nav_item(ui, t.icon, t.title, active, t.id.is_some()) {
@@ -110,12 +124,12 @@ impl WieldApp {
 
         ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
             ui.add_space(4.0);
-            ui.add(egui::Label::new(RichText::new(self.os.summary()).small().color(TEXT_DIM)).wrap());
+            ui.add(egui::Label::new(RichText::new(self.os.summary()).small().color(theme::text_dim())).wrap());
             if self.elevated {
-                ui.label(RichText::new(format!("{} Administrator", icon::SHIELD_CHECK)).small().color(GREEN));
+                ui.label(RichText::new(format!("{} Administrator", icon::SHIELD_CHECK)).small().color(theme::green()));
             } else {
                 let r = ui
-                    .add(egui::Button::new(RichText::new(format!("{} Restart as admin", icon::LOCK)).small().color(ORANGE)).frame(false))
+                    .add(egui::Button::new(RichText::new(format!("{} Restart as admin", icon::LOCK)).small().color(theme::orange())).frame(false))
                     .on_hover_text("Relaunch Wield with administrator rights (UAC prompt)");
                 if r.clicked() {
                     match elevation::relaunch_as_admin() {
@@ -125,6 +139,12 @@ impl WieldApp {
                 }
             }
             ui.separator();
+            let dark = theme::is_dark();
+            let (ic, label) = if dark { (icon::SUN, "Light mode") } else { (icon::MOON, "Dark mode") };
+            if ui.add(egui::Button::new(RichText::new(format!("{ic}  {label}")).color(theme::text_dim())).frame(false)).clicked() {
+                theme::set_dark(ui.ctx(), !dark);
+                crate::settings::Settings { dark: !dark }.save();
+            }
         });
     }
 
@@ -132,7 +152,7 @@ impl WieldApp {
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
             egui::Frame::new().inner_margin(Margin::same(28)).show(ui, |ui| {
                 ui.label(RichText::new("Welcome to Wield").font(FontId::new(28.0, theme::heading_family())));
-                ui.label(RichText::new(format!("{}  ·  {}", self.os.summary(), if self.elevated { "Administrator" } else { "Standard user" })).color(TEXT_DIM));
+                ui.label(RichText::new(format!("{}  ·  {}", self.os.summary(), if self.elevated { "Administrator" } else { "Standard user" })).color(theme::text_dim()));
                 ui.add_space(22.0);
 
                 let card_w = 260.0;
@@ -161,12 +181,12 @@ impl WieldApp {
         let available = t.id.is_some();
         let (rect, resp) = ui.allocate_exact_size(vec2(width, 150.0), if available { Sense::click() } else { Sense::hover() });
         let hovered = resp.hovered() && available;
-        let fill = if hovered { theme::CARD_HOVER } else { theme::CARD };
-        let stroke = if hovered { Stroke::new(1.5, ACCENT) } else { Stroke::new(1.0, BORDER) };
+        let fill = if hovered { theme::card_hover() } else { theme::card() };
+        let stroke = if hovered { Stroke::new(1.5, theme::accent()) } else { Stroke::new(1.0, theme::border()) };
         ui.painter().rect(rect, CornerRadius::same(12), fill, stroke, StrokeKind::Inside);
 
         let mut child = ui.new_child(UiBuilder::new().max_rect(rect.shrink(18.0)).layout(Layout::top_down(Align::Min)));
-        let accent = if available { ACCENT } else { TEXT_DIM };
+        let accent = if available { theme::accent() } else { theme::text_dim() };
         child.horizontal(|ui| {
             egui::Frame::new()
                 .fill(accent.gamma_multiply(0.15))
@@ -175,22 +195,23 @@ impl WieldApp {
                 .show(ui, |ui| ui.label(RichText::new(t.icon).size(24.0).color(accent)));
             if !available {
                 ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                    theme::badge(ui, "Coming soon", TEXT_DIM);
+                    theme::badge(ui, "Coming soon", theme::text_dim());
                 });
             }
         });
         child.add_space(10.0);
-        let title_color = if available { theme::TEXT } else { TEXT_DIM };
+        let title_color = if available { theme::text() } else { theme::text_dim() };
         child.label(RichText::new(t.title).font(FontId::new(16.0, theme::heading_family())).color(title_color));
-        child.add(egui::Label::new(RichText::new(t.blurb).small().color(TEXT_DIM)).wrap());
+        child.add(egui::Label::new(RichText::new(t.blurb).small().color(theme::text_dim())).wrap());
         let summary = match t.id {
             Some(ToolId::Startup) => self.startup.summary_line(),
             Some(ToolId::Privacy) => self.privacy.summary_line(),
             Some(ToolId::Debloat) => self.debloat.summary_line(),
+            Some(ToolId::Network) => self.network.summary_line(),
             None => None,
         };
         if let Some(s) = summary {
-            child.label(RichText::new(s).small().color(ACCENT));
+            child.label(RichText::new(s).small().color(theme::accent()));
         }
         if available { resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() } else { false }
     }
@@ -201,19 +222,19 @@ fn nav_item(ui: &mut Ui, ic: &str, label: &str, active: bool, enabled: bool) -> 
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 34.0), if enabled { Sense::click() } else { Sense::hover() });
     let painter = ui.painter();
     if active {
-        painter.rect_filled(rect, CornerRadius::same(8), ACCENT.gamma_multiply(0.18));
-        painter.rect_filled(egui::Rect::from_min_size(rect.left_top() + vec2(0.0, 8.0), vec2(3.0, 18.0)), CornerRadius::same(2), ACCENT);
+        painter.rect_filled(rect, CornerRadius::same(8), theme::accent().gamma_multiply(0.18));
+        painter.rect_filled(egui::Rect::from_min_size(rect.left_top() + vec2(0.0, 8.0), vec2(3.0, 18.0)), CornerRadius::same(2), theme::accent());
     } else if resp.hovered() && enabled {
-        painter.rect_filled(rect, CornerRadius::same(8), Color32::from_white_alpha(8));
+        painter.rect_filled(rect, CornerRadius::same(8), theme::card_hover());
     }
     let color = if active {
-        theme::TEXT
+        theme::text()
     } else if enabled {
-        Color32::from_rgb(0xc3, 0xc8, 0xd2)
+        theme::text()
     } else {
-        TEXT_DIM.gamma_multiply(0.7)
+        theme::text_dim().gamma_multiply(0.7)
     };
-    painter.text(rect.left_center() + vec2(14.0, 0.0), egui::Align2::LEFT_CENTER, ic, FontId::proportional(17.0), if active { ACCENT } else { color });
+    painter.text(rect.left_center() + vec2(14.0, 0.0), egui::Align2::LEFT_CENTER, ic, FontId::proportional(17.0), if active { theme::accent() } else { color });
     painter.text(rect.left_center() + vec2(42.0, 0.0), egui::Align2::LEFT_CENTER, label, FontId::proportional(14.0), color);
     let resp = if enabled { resp.on_hover_cursor(egui::CursorIcon::PointingHand) } else { resp.on_hover_text("Coming soon") };
     resp.clicked()
@@ -224,14 +245,15 @@ impl eframe::App for WieldApp {
         egui::Panel::left("nav")
             .resizable(false)
             .exact_size(232.0)
-            .frame(egui::Frame::new().fill(theme::SIDEBAR).inner_margin(Margin::same(14)).stroke(Stroke::new(1.0, BORDER)))
+            .frame(egui::Frame::new().fill(theme::sidebar()).inner_margin(Margin::same(14)).stroke(Stroke::new(1.0, theme::border())))
             .show(ui, |ui| self.sidebar(ui));
 
-        egui::CentralPanel::no_frame().frame(egui::Frame::new().fill(theme::BG)).show(ui, |ui| match self.view {
+        egui::CentralPanel::no_frame().frame(egui::Frame::new().fill(theme::bg())).show(ui, |ui| match self.view {
             View::Home => self.home(ui),
             View::Tool(ToolId::Startup) => self.startup.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Privacy) => self.privacy.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Debloat) => self.debloat.show(ui, self.elevated, &mut self.toasts),
+            View::Tool(ToolId::Network) => self.network.show(ui, self.elevated, &mut self.toasts),
         });
 
         let ctx = ui.ctx().clone();

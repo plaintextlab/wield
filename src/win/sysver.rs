@@ -10,6 +10,20 @@ pub struct OsInfo {
     pub release: String,
     /// e.g. "22631.4317"
     pub build: String,
+    /// Registry EditionID, e.g. "Professional", "Core", "EnterpriseS", "IoTEnterpriseS".
+    pub edition_id: String,
+}
+
+impl OsInfo {
+    pub fn build_number(&self) -> u32 {
+        self.build.split('.').next().and_then(|b| b.parse().ok()).unwrap_or(0)
+    }
+
+    /// Enterprise, Education, IoT and Server editions honor the strictest telemetry policies.
+    pub fn is_enterprise_class(&self) -> bool {
+        let e = self.edition_id.to_lowercase();
+        ["enterprise", "education", "server", "iot"].iter().any(|k| e.contains(k))
+    }
 }
 
 impl OsInfo {
@@ -47,5 +61,6 @@ pub fn os_info() -> OsInfo {
         product,
         release,
         build: if ubr > 0 { format!("{build}.{ubr}") } else { build },
+        edition_id: get("EditionID"),
     }
 }

@@ -5,6 +5,7 @@ use egui_phosphor::regular as icon;
 
 use crate::theme::{self, ACCENT, BORDER, GREEN, ORANGE, TEXT_DIM};
 use crate::toast::Toasts;
+use crate::tools::privacy::ui::PrivacyManager;
 use crate::tools::startup::ui::StartupManager;
 use crate::win::elevation;
 use crate::win::sysver::{OsInfo, os_info};
@@ -12,6 +13,7 @@ use crate::win::sysver::{OsInfo, os_info};
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ToolId {
     Startup,
+    Privacy,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -35,7 +37,12 @@ const TOOLS: &[ToolInfo] = &[
         title: "Startup Manager",
         blurb: "Control apps, services and scheduled tasks that run when Windows starts.",
     },
-    ToolInfo { id: None, icon: icon::EYE_SLASH, title: "Privacy & Telemetry", blurb: "Review and turn off data collection and ads." },
+    ToolInfo {
+        id: Some(ToolId::Privacy),
+        icon: icon::EYE_SLASH,
+        title: "Privacy & Telemetry",
+        blurb: "Turn off telemetry, ads, web search and tracking, with one-click restore.",
+    },
     ToolInfo { id: None, icon: icon::PACKAGE, title: "App Debloater", blurb: "Remove preinstalled Store apps you don't use." },
     ToolInfo { id: None, icon: icon::BROOM, title: "Disk Cleanup", blurb: "Find and clear temp files, caches and leftovers." },
     ToolInfo { id: None, icon: icon::CLOUD_ARROW_DOWN, title: "Update Control", blurb: "Pause, schedule and tune Windows Update." },
@@ -50,6 +57,7 @@ pub struct WieldApp {
     elevated: bool,
     toasts: Toasts,
     startup: StartupManager,
+    privacy: PrivacyManager,
 }
 
 impl WieldApp {
@@ -59,9 +67,11 @@ impl WieldApp {
         let args: Vec<String> = std::env::args().collect();
         let view = match args.iter().position(|a| a == "--tool").and_then(|i| args.get(i + 1)).map(String::as_str) {
             Some("startup") => View::Tool(ToolId::Startup),
+            Some("privacy") => View::Tool(ToolId::Privacy),
             _ => View::Home,
         };
-        Self { view, os: os_info(), elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
+        let os = os_info();
+        Self { view, privacy: PrivacyManager::new(os.clone()), os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
     }
 
     fn sidebar(&mut self, ui: &mut Ui) {
@@ -164,10 +174,13 @@ impl WieldApp {
         let title_color = if available { theme::TEXT } else { TEXT_DIM };
         child.label(RichText::new(t.title).font(FontId::new(16.0, theme::heading_family())).color(title_color));
         child.add(egui::Label::new(RichText::new(t.blurb).small().color(TEXT_DIM)).wrap());
-        if t.id == Some(ToolId::Startup) {
-            if let Some(s) = self.startup.summary_line() {
-                child.label(RichText::new(s).small().color(ACCENT));
-            }
+        let summary = match t.id {
+            Some(ToolId::Startup) => self.startup.summary_line(),
+            Some(ToolId::Privacy) => self.privacy.summary_line(),
+            None => None,
+        };
+        if let Some(s) = summary {
+            child.label(RichText::new(s).small().color(ACCENT));
         }
         if available { resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() } else { false }
     }
@@ -207,6 +220,7 @@ impl eframe::App for WieldApp {
         egui::CentralPanel::no_frame().frame(egui::Frame::new().fill(theme::BG)).show(ui, |ui| match self.view {
             View::Home => self.home(ui),
             View::Tool(ToolId::Startup) => self.startup.show(ui, self.elevated, &mut self.toasts),
+            View::Tool(ToolId::Privacy) => self.privacy.show(ui, self.elevated, &mut self.toasts),
         });
 
         let ctx = ui.ctx().clone();

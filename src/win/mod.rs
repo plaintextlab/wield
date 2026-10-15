@@ -21,6 +21,16 @@ pub fn from_pwstr(p: PWSTR) -> String {
     unsafe { p.to_string().unwrap_or_default() }
 }
 
+/// Runs `f` on a short-lived worker thread with COM initialized, and waits for it.
+pub fn with_com<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
+    std::thread::spawn(move || {
+        let _com = ComGuard::new();
+        f()
+    })
+    .join()
+    .expect("worker thread panicked")
+}
+
 /// Initializes COM for the current thread and uninitializes it on drop.
 pub struct ComGuard {
     owned: bool,

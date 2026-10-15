@@ -13,7 +13,8 @@ Download it from [Releases](https://github.com/plaintextlab/wield/releases).
 | Tool | Status |
 |---|---|
 | **Startup Manager** | ✅ Available |
-| Privacy & Telemetry, App Debloater, Disk Cleanup, Update Control, Network Toolkit, Uninstaller, System Info | Planned |
+| **Privacy & Telemetry** | ✅ Available |
+| App Debloater, Disk Cleanup, Update Control, Network Toolkit, Uninstaller, System Info | Planned |
 
 ### Startup Manager
 
@@ -47,6 +48,35 @@ Each entry is rated on two scales:
 - **Restore point** button creates a System Restore point before risky changes.
 - Without administrator rights the app is read-only for machine-wide entries. Use *Restart as administrator* (UAC prompt).
 
+### Privacy & Telemetry
+
+![Privacy & Telemetry](docs/screenshots/privacy.png)
+
+42 privacy settings in six groups, each shown with what it does and what you give up:
+
+- **Telemetry & diagnostics**: diagnostic data level, the DiagTrack and dmwappushservice services, telemetry
+  scheduled tasks, CEIP, app telemetry and inventory, Error Reporting, feedback prompts, tailored experiences,
+  inking/typing data.
+- **Ads & suggestions**: advertising ID, auto-installed promoted apps, tips, Settings and lock screen promotions,
+  post-update welcome pages, File Explorer sync ads, consumer experiences.
+- **Search**: Bing web results in Start, search highlights, cloud content search, Cortana.
+- **Activity, speech & typing**: activity history, cross-device clipboard, online speech recognition,
+  inking & typing personalization, app launch tracking.
+- **AI features**: Recall snapshots (24H2+ Copilot+ PCs) and Windows Copilot.
+- **App permissions**: block Store apps from account info, app diagnostics, location, camera, microphone,
+  notifications, contacts, calendar, call history, email, messages and radios.
+
+How it behaves:
+
+- A **privacy score** counts how many of the 29 recommended protections are on. **Apply all recommended** turns
+  them all on after showing you the list.
+- It knows your edition. For example, it sets diagnostic data to *Security* on Enterprise/Education/LTSC and to
+  *Required* on Home/Pro, and hides settings that don't exist on your build.
+- Switching a setting off restores the Windows default. The first time Wield touches a value it saves the
+  original to `%LOCALAPPDATA%\Wield\privacy-backup.json`, and **Restore original settings** puts everything back
+  exactly as it was.
+- Personal (HKCU) settings work without admin rights. All-users settings are marked with a lock.
+
 ## Build
 
 Requires the Rust MSVC toolchain.
@@ -55,7 +85,7 @@ Requires the Rust MSVC toolchain.
 cargo build --release
 ```
 
-The binary is `target/release/wield.exe`. Run `wield.exe --tool startup` to open the Startup Manager directly.
+The binary is `target/release/wield.exe`. Run `wield.exe --tool startup` or `wield.exe --tool privacy` to open a tool directly.
 
 ```bash
 cargo test

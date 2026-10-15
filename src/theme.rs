@@ -178,43 +178,7 @@ pub fn danger_button(ui: &mut Ui, text: impl Into<String>, color: Color32, enabl
     )
 }
 
-/// App window icon: a rounded gradient tile with a lightning bolt.
+/// App window icon, drawn by the same code that builds the .exe icon.
 pub fn window_icon() -> egui::IconData {
-    let n = 64usize;
-    let mut rgba = vec![0u8; n * n * 4];
-    let bolt = [(36.0, 6.0), (16.0, 36.0), (30.0, 36.0), (26.0, 58.0), (48.0, 26.0), (34.0, 26.0), (36.0, 6.0)];
-    let inside_bolt = |x: f32, y: f32| {
-        // Even-odd ray casting.
-        let mut inside = false;
-        for w in bolt.windows(2) {
-            let ((x1, y1), (x2, y2)) = (w[0], w[1]);
-            if (y1 > y) != (y2 > y) && x < (x2 - x1) * (y - y1) / (y2 - y1) + x1 {
-                inside = !inside;
-            }
-        }
-        inside
-    };
-    for y in 0..n {
-        for x in 0..n {
-            let (fx, fy) = (x as f32 + 0.5, y as f32 + 0.5);
-            // Rounded square mask, radius 14.
-            let r = 14.0;
-            let cx = fx.clamp(r, n as f32 - r);
-            let cy = fy.clamp(r, n as f32 - r);
-            let d = ((fx - cx).powi(2) + (fy - cy).powi(2)).sqrt();
-            let alpha = (r + 0.5 - d).clamp(0.0, 1.0);
-            let t = (fx + fy) / (2.0 * n as f32);
-            let (mut red, mut green, mut blue) = (
-                (0x4c as f32 + (0x8a - 0x4c) as f32 * t) as u8,
-                (0x8d as f32 + (0x5c - 0x8d) as f32 * t) as u8,
-                (0xff as f32 + (0xf6 - 0xff) as f32 * t) as u8,
-            );
-            if inside_bolt(fx, fy) {
-                (red, green, blue) = (255, 255, 255);
-            }
-            let i = (y * n + x) * 4;
-            rgba[i..i + 4].copy_from_slice(&[red, green, blue, (alpha * 255.0) as u8]);
-        }
-    }
-    egui::IconData { rgba, width: n as u32, height: n as u32 }
+    egui::IconData { rgba: crate::icon_art::render_icon(64), width: 64, height: 64 }
 }

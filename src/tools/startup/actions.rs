@@ -5,7 +5,7 @@ use std::os::windows::process::CommandExt;
 use super::journal::{self, Entry, Journal, PrevState};
 use super::model::{Locator, StartupItem};
 use super::{registry, services, tasks};
-use crate::win::ComGuard;
+use crate::win::with_com;
 use crate::win::elevation::is_elevated;
 
 const SERVICE_AUTO: u32 = 2;
@@ -27,7 +27,7 @@ pub struct Applied {
     pub service_start: Option<(u32, bool)>,
 }
 
-fn friendly(err: String) -> String {
+pub(crate) fn friendly(err: String) -> String {
     let lower = err.to_lowercase();
     if lower.contains("access is denied") || lower.contains("access denied") || lower.contains("0x80070005") {
         if is_elevated() {
@@ -38,16 +38,6 @@ fn friendly(err: String) -> String {
     } else {
         err
     }
-}
-
-/// Runs `f` on a short-lived worker thread with COM initialized, and waits for it.
-fn with_com<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
-    std::thread::spawn(move || {
-        let _com = ComGuard::new();
-        f()
-    })
-    .join()
-    .expect("worker thread panicked")
 }
 
 pub fn set_enabled(item: &StartupItem, enable: bool, mode: ServiceMode) -> Result<Applied, String> {

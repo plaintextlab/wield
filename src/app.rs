@@ -179,7 +179,7 @@ impl WieldApp {
     /// Draws one home-grid card. Returns true when clicked.
     fn tool_card(&self, ui: &mut Ui, t: &ToolInfo, width: f32) -> bool {
         let available = t.id.is_some();
-        let (rect, resp) = ui.allocate_exact_size(vec2(width, 150.0), if available { Sense::click() } else { Sense::hover() });
+        let (rect, resp) = ui.allocate_exact_size(vec2(width, 190.0), if available { Sense::click() } else { Sense::hover() });
         let hovered = resp.hovered() && available;
         let fill = if hovered { theme::card_hover() } else { theme::card() };
         let stroke = if hovered { Stroke::new(1.5, theme::accent()) } else { Stroke::new(1.0, theme::border()) };
@@ -210,8 +210,15 @@ impl WieldApp {
             Some(ToolId::Network) => self.network.summary_line(),
             None => None,
         };
+        // Live status sits on its own line at the bottom of the card, above a divider.
         if let Some(s) = summary {
-            child.label(RichText::new(s).small().color(theme::accent()));
+            let inner = rect.shrink(18.0);
+            let line_y = inner.bottom() - 26.0;
+            ui.painter().hline(inner.x_range(), line_y, Stroke::new(1.0, theme::border()));
+            let mut foot = ui.new_child(
+                UiBuilder::new().max_rect(egui::Rect::from_min_max(egui::pos2(inner.left(), line_y + 8.0), inner.right_bottom())),
+            );
+            foot.add(egui::Label::new(RichText::new(s).small().color(theme::accent())).truncate());
         }
         if available { resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() } else { false }
     }

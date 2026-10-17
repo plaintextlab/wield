@@ -3,6 +3,9 @@
 
 use serde::Deserialize;
 
+use winreg::RegKey;
+use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_QUERY_VALUE};
+
 use super::sys::{self, powershell};
 
 const SR_KEY: &str = r"HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore";
@@ -139,12 +142,54 @@ pub fn storage() -> Result<Vec<Storage>, String> {
 }
 
 /// Drive letters with System Protection turned on.
-pub fn protected_drives() -> Result<Vec<String>, String> {
-    let out = powershell(
-        "(Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SPP\\Clients' -ErrorAction Stop).'{09F7EDC5-294E-4180-AF6A-FB0E6A0E9513}'",
-    )
-    .unwrap_or_default();
-    Ok(parse_protected(&out))
+///
+/// Windows records this under SPP\Clients, but that key is locked down and often can't be read
+/// even as administrator. When it can't, Wield uses the state it set itself last time, and
+/// otherwise assumes a drive is protected when it has restore point storage and System Restore is on.
+pub fn protected_drives(storage: &[Storage]) -> Vec<String> {
+    let key = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey_with_flags(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SPP\Clients", KEY_QUERY_VALUE);
+    if let Ok(k) = key {
+        match k.get_value::<Vec<String>, _>("{09F7EDC5-294E-4180-AF6A-FB0E6A0E9513}") {
+            Ok(v) => return parse_protected(&v.join("\n")),
+            // No value at all: protection is off everywhere.
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Vec::new(),
+            Err(_) => {}
+        }
+    }
+    let remembered = remembered();
+    let sr_on = RegKey::predef(HKEY_LOCAL_MACHINE)
+        .open_subkey_with_flags(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore", KEY_QUERY_VALUE)
+        .ok()
+        .and_then(|k| k.get_value::<u32, _>("RPSessionInterval").ok())
+        .is_some_and(|v| v != 0);
+    let mut drives: Vec<String> = sys::volumes()
+        .into_iter()
+        .map(|v| v.letter)
+        .filter(|d| match remembered.get(d) {
+            Some(on) => *on,
+            None => sr_on && storage.iter().any(|s| &s.volume == d),
+        })
+        .collect();
+    drives.sort();
+    drives
+}
+
+fn remembered_path() -> Option<std::path::PathBuf> {
+    Some(crate::settings::data_dir()?.join("restore-protection.json"))
+}
+
+/// Protection state per drive as Wield last set it.
+fn remembered() -> std::collections::HashMap<String, bool> {
+    remembered_path().and_then(|p| std::fs::read_to_string(p).ok()).and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
+}
+
+fn remember(drive: &str, on: bool) {
+    let mut m = remembered();
+    m.insert(drive.to_uppercase(), on);
+    if let Some(p) = remembered_path() {
+        let _ = std::fs::create_dir_all(p.parent().unwrap());
+        let _ = std::fs::write(p, serde_json::to_string(&m).unwrap_or_default());
+    }
 }
 
 /// Entries look like `\\?\Volume{guid}\:(C%3A)`.
@@ -161,7 +206,9 @@ pub fn parse_protected(text: &str) -> Vec<String> {
 
 pub fn set_protection(drive: &str, on: bool) -> Result<(), String> {
     let cmd = if on { "Enable-ComputerRestore" } else { "Disable-ComputerRestore" };
-    powershell(&format!("{cmd} -Drive '{drive}\\' -ErrorAction Stop")).map(|_| ())
+    powershell(&format!("{cmd} -Drive '{drive}\\' -ErrorAction Stop"))?;
+    remember(drive, on);
+    Ok(())
 }
 
 /// Sets how much of the drive restore points may use (percent).
@@ -250,6 +297,15 @@ mod tests {
             \x20  Used Shadow Copy Storage space: 1.24 GB (1%)\r\n   Allocated Shadow Copy Storage space: 1.81 GB (1%)\r\n   Maximum Shadow Copy Storage space: 23.8 GB (5%)\r\n";
         let s = parse_storage(text);
         assert_eq!(s, vec![Storage { volume: "C:".into(), used: "1.24 GB (1%)".into(), allocated: "1.81 GB (1%)".into(), max: "23.8 GB (5%)".into() }]);
+    }
+
+    #[test]
+    fn detects_protection_without_the_locked_key() {
+        // Without admin rights the SPP key can't be read; the fallback must still answer.
+        let sys = sys::system_drive();
+        let with_storage = vec![Storage { volume: sys.clone(), ..Default::default() }];
+        let d = protected_drives(&with_storage);
+        assert!(d.iter().all(|x| x.len() == 2 && x.ends_with(':')), "{d:?}");
     }
 
     #[test]

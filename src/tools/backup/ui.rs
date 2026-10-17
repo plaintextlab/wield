@@ -41,11 +41,12 @@ struct Info {
 fn load_info(elevated: bool, ctx: egui::Context) -> Receiver<Info> {
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
+        let storage = if elevated { restore::storage().unwrap_or_default() } else { Vec::new() };
         let info = Info {
             volumes: sys::volumes(),
             points: elevated.then(restore::list),
-            storage: if elevated { restore::storage().unwrap_or_default() } else { Vec::new() },
-            protected: restore::protected_drives().unwrap_or_default(),
+            storage: storage.clone(),
+            protected: restore::protected_drives(&storage),
             daily: restore::daily_scheduled(),
             winre: if elevated { image::winre_enabled().ok() } else { None },
             bitlocker: sys::bitlocker(&sys::system_drive()),
@@ -834,7 +835,7 @@ impl BackupManager {
             }
             ui.add_space(6.0);
             ui.horizontal(|ui| {
-                ui.label(format!("Space for restore points on {sysd}:"));
+                ui.label(format!("Space for restore points on {sysd}"));
                 ui.add(egui::Slider::new(&mut self.max_pct, 2..=30).suffix("%"));
                 if ui.add_enabled(elevated && !busy, egui::Button::new("Apply")).clicked() {
                     let (d, p) = (sysd.clone(), self.max_pct);

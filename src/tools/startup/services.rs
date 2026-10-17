@@ -261,3 +261,14 @@ pub fn set_start(name: &str, start_type: u32, delayed: bool) -> Result<(), Strin
     }
     Ok(())
 }
+
+/// Running services keyed by host process id: pid -> [(service name, display name)].
+pub fn running_by_pid() -> std::collections::HashMap<u32, Vec<(String, String)>> {
+    let mut map: std::collections::HashMap<u32, Vec<(String, String)>> = std::collections::HashMap::new();
+    if let Ok(scm) = open_manager(SC_MANAGER_CONNECT | SC_MANAGER_ENUMERATE_SERVICE) {
+        for e in enumerate(&scm).into_iter().filter(|e| e.running && e.pid != 0) {
+            map.entry(e.pid).or_default().push((e.name, e.display));
+        }
+    }
+    map
+}

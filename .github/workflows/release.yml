@@ -1,13 +1,13 @@
 name: Release
 
-# Push a tag like v0.1.0 to build wield.exe and publish it as a GitHub Release.
+# Push a tag like v0.6.0 to build the portable exe and the installer and publish a GitHub Release.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing tag to (re)build and release, e.g. v0.1.0"
+        description: "Existing tag to (re)build and release, e.g. v0.6.0"
         required: true
 
 permissions:
@@ -28,19 +28,30 @@ jobs:
         run: cargo test --locked
       - name: Build release
         run: cargo build --release --locked
+      - name: Build installer
+        shell: pwsh
+        run: ./installer/build.ps1 -Version $env:TAG.TrimStart('v')
+      - name: Test installer (silent install + uninstall)
+        shell: pwsh
+        run: ./installer/smoke-test.ps1 -Setup "dist/wield-$env:TAG-setup.exe"
       - name: Package
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force dist | Out-Null
-          $exe = "dist/wield-$env:TAG-windows-x64.exe"
-          Copy-Item target/release/wield.exe $exe
-          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  $(Split-Path $exe -Leaf)" | Out-File -Encoding ascii "$exe.sha256"
+          Copy-Item target/release/wield.exe "dist/wield-$env:TAG-windows-x64.exe"
+          foreach ($f in Get-ChildItem dist -Filter *.exe) {
+            $hash = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($f.Name)" | Out-File -Encoding ascii "$($f.FullName).sha256"
+          }
+          Get-ChildItem dist | Format-Table Name, Length
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           name: Wield ${{ env.TAG }}
           generate_release_notes: true
+          body: |
+            **Installer:** `wield-${{ env.TAG }}-setup.exe` installs for your account (no admin needed) or for all users, adds a Start menu entry and an uninstaller, and lets Wield update itself silently.
+            **Portable:** `wield-${{ env.TAG }}-windows-x64.exe` runs from anywhere and can also update itself.
+            Each file has a `.sha256` checksum that the in-app updater verifies before installing.
           files: |
             dist/*.exe
             dist/*.sha256

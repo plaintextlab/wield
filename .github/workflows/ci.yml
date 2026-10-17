@@ -16,8 +16,19 @@ jobs:
         run: cargo test --locked
       - name: Build release
         run: cargo build --release --locked
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          ./installer/build.ps1 -Version $v
+          "VERSION=$v" | Out-File -Append $env:GITHUB_ENV
+      - name: Test installer (silent install + uninstall)
+        shell: pwsh
+        run: ./installer/smoke-test.ps1 -Setup "dist/wield-v$env:VERSION-setup.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: wield-${{ github.sha }}
-          path: target/release/wield.exe
+          path: |
+            target/release/wield.exe
+            dist/*.exe
           retention-days: 14

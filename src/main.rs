@@ -4,9 +4,11 @@
 mod app;
 mod icon_art;
 mod settings;
+mod settings_ui;
 mod theme;
 mod toast;
 mod tools;
+mod update;
 mod win;
 
 fn main() -> eframe::Result<()> {

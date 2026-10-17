@@ -19,6 +19,11 @@ impl Drop for H {
 
 /// Sends a request to `https://{host}{path}` and returns (status code, body).
 pub fn request(method: &str, host: &str, path: &str, body: Option<(&str, &[u8])>) -> Result<(u32, Vec<u8>), String> {
+    request_accept(method, host, path, body, "application/json")
+}
+
+/// Like [`request`] with a custom `Accept` header (`*/*` for file downloads).
+pub fn request_accept(method: &str, host: &str, path: &str, body: Option<(&str, &[u8])>, accept: &str) -> Result<(u32, Vec<u8>), String> {
     let err = |what: &str| format!("{what} failed: {}", windows::core::Error::from_thread().message());
     unsafe {
         let agent = wide(concat!("Wield/", env!("CARGO_PKG_VERSION")));
@@ -40,16 +45,16 @@ pub fn request(method: &str, host: &str, path: &str, body: Option<(&str, &[u8])>
         let headers: Vec<u16>;
         let (hdr, data, len) = match body {
             Some((content_type, bytes)) => {
-                headers = format!("Content-Type: {content_type}\r\nAccept: application/json\r\n").encode_utf16().collect();
+                headers = format!("Content-Type: {content_type}\r\nAccept: {accept}\r\n").encode_utf16().collect();
                 (Some(headers.as_slice()), Some(bytes.as_ptr() as *const _), bytes.len() as u32)
             }
             None => {
-                headers = "Accept: application/json\r\n".encode_utf16().collect();
+                headers = format!("Accept: {accept}\r\n").encode_utf16().collect();
                 (Some(headers.as_slice()), None, 0)
             }
         };
-        WinHttpSendRequest(req.0, hdr, data, len, len, 0).map_err(|e| format!("Request failed: {}", e.message()))?;
-        WinHttpReceiveResponse(req.0, std::ptr::null_mut()).map_err(|e| format!("No response: {}", e.message()))?;
+        WinHttpSendRequest(req.0, hdr, data, len, len, 0).map_err(|e| format!("Request to {host} failed (error {}): {}", e.code().0 & 0xFFFF, e.message()))?;
+        WinHttpReceiveResponse(req.0, std::ptr::null_mut()).map_err(|e| format!("No response from {host} (error {}): {}", e.code().0 & 0xFFFF, e.message()))?;
 
         let mut status = 0u32;
         let mut size = 4u32;
@@ -74,10 +79,43 @@ pub fn request(method: &str, host: &str, path: &str, body: Option<(&str, &[u8])>
                 break;
             }
             out.extend_from_slice(&buf[..read as usize]);
-            if out.len() > 32 * 1024 * 1024 {
+            if out.len() > 128 * 1024 * 1024 {
                 return Err("Response too large".into());
             }
         }
         Ok((status, out))
     }
+}
+
+/// GET an absolute `https://` URL (redirects are followed by WinHTTP).
+pub fn get_url(url: &str) -> Result<(u32, Vec<u8>), String> {
+    let rest = url.strip_prefix("https://").ok_or("Only https:// URLs are supported")?;
+    let (host, path) = rest.split_once('/').map(|(h, p)| (h, format!("/{p}"))).unwrap_or((rest, "/".into()));
+    request_accept("GET", host, &path, None, "*/*")
+}
+
+/// Downloads a URL to a file. Prefers Windows' built-in curl.exe (Windows 10 1803+), which copes
+/// with CDNs that stall WinHTTP on some systems, and falls back to WinHTTP.
+pub fn download_to(url: &str, dest: &std::path::Path) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    if let Some(d) = dest.parent() {
+        std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
+    }
+    let curl = std::path::PathBuf::from(std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".into())).join(r"System32\curl.exe");
+    if curl.is_file() {
+        let out = std::process::Command::new(&curl)
+            .args(["-fsSL", "--retry", "2", "--connect-timeout", "15", "-A", concat!("Wield/", env!("CARGO_PKG_VERSION")), "-o"])
+            .arg(dest)
+            .arg(url)
+            .creation_flags(0x0800_0000)
+            .output();
+        if matches!(&out, Ok(o) if o.status.success()) && dest.is_file() {
+            return Ok(());
+        }
+    }
+    let (status, bytes) = get_url(url)?;
+    if status != 200 {
+        return Err(format!("Download failed (HTTP {status})."));
+    }
+    std::fs::write(dest, bytes).map_err(|e| e.to_string())
 }

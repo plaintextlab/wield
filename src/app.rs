@@ -8,6 +8,7 @@ use crate::toast::Toasts;
 use crate::tools::debloat::ui::DebloatManager;
 use crate::tools::malware::ui::MalwareManager;
 use crate::tools::network::ui::NetworkManager;
+use crate::tools::procs::ui::{Intent, ProcessManager};
 use crate::tools::privacy::ui::PrivacyManager;
 use crate::tools::startup::ui::StartupManager;
 use crate::win::elevation;
@@ -20,12 +21,14 @@ enum ToolId {
     Debloat,
     Network,
     Malware,
+    Processes,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum View {
     Home,
     Tool(ToolId),
+    Settings,
 }
 
 struct ToolInfo {
@@ -56,6 +59,12 @@ const TOOLS: &[ToolInfo] = &[
         blurb: "Remove preinstalled Store apps you don't use. Reinstall any time.",
     },
     ToolInfo {
+        id: Some(ToolId::Processes),
+        icon: icon::CPU,
+        title: "Process Explorer",
+        blurb: "Every process with CPU, memory, I/O, open files, DLLs and services. End, suspend or throttle.",
+    },
+    ToolInfo {
         id: Some(ToolId::Malware),
         icon: icon::SHIELD_WARNING,
         title: "Malware Scanner",
@@ -70,7 +79,7 @@ const TOOLS: &[ToolInfo] = &[
         blurb: "Per-app traffic and blocking, open ports, network scanner, DNS and repairs.",
     },
     ToolInfo { id: None, icon: icon::TRASH, title: "Uninstaller", blurb: "Remove programs completely, including leftovers." },
-    ToolInfo { id: None, icon: icon::CPU, title: "System Info", blurb: "Hardware, drivers and Windows edition at a glance." },
+    ToolInfo { id: None, icon: icon::DESKTOP, title: "System Info", blurb: "Hardware, drivers and Windows edition at a glance." },
 ];
 
 pub struct WieldApp {
@@ -83,6 +92,9 @@ pub struct WieldApp {
     debloat: DebloatManager,
     network: NetworkManager,
     malware: MalwareManager,
+    processes: ProcessManager,
+    settings: crate::settings::Settings,
+    updater: crate::settings_ui::Updater,
 }
 
 impl WieldApp {
@@ -97,6 +109,8 @@ impl WieldApp {
             Some("debloat") => View::Tool(ToolId::Debloat),
             Some("network") => View::Tool(ToolId::Network),
             Some("malware") => View::Tool(ToolId::Malware),
+            Some("processes") => View::Tool(ToolId::Processes),
+            Some("settings") => View::Settings,
             _ => View::Home,
         };
         let mut network = NetworkManager::new();
@@ -106,6 +120,10 @@ impl WieldApp {
         // `--scan <path>` (used by Explorer's "Scan with Wield") opens the scanner and starts right away.
         let mut malware = MalwareManager::new();
         let mut view = view;
+        let mut processes = ProcessManager::new();
+        if let Some(pid) = args.iter().position(|a| a == "--pid").and_then(|i| args.get(i + 1)).and_then(|p| p.parse().ok()) {
+            processes.select_pid(pid);
+        }
         if let Some(tab) = args.iter().position(|a| a == "--tab").and_then(|i| args.get(i + 1)) {
             malware.set_tab(tab);
         }
@@ -114,7 +132,9 @@ impl WieldApp {
             malware.scan_paths(vec![std::path::PathBuf::from(p)], &cc.egui_ctx);
         }
         let os = os_info();
-        Self { view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(),  network, malware, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
+        let mut updater = crate::settings_ui::Updater::new();
+        updater.maybe_auto_check(&settings, &cc.egui_ctx);
+        Self { settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(),  network, malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
     }
 
     fn sidebar(&mut self, ui: &mut Ui) {
@@ -159,11 +179,22 @@ impl WieldApp {
                 }
             }
             ui.separator();
-            let dark = theme::is_dark();
-            let (ic, label) = if dark { (icon::SUN, "Light mode") } else { (icon::MOON, "Dark mode") };
-            if ui.add(egui::Button::new(RichText::new(format!("{ic}  {label}")).color(theme::text_dim())).frame(false)).clicked() {
-                theme::set_dark(ui.ctx(), !dark);
-                crate::settings::Settings { dark: !dark }.save();
+            ui.horizontal(|ui| {
+                let dark = theme::is_dark();
+                let (ic, label) = if dark { (icon::SUN, "Light") } else { (icon::MOON, "Dark") };
+                if ui.add(egui::Button::new(RichText::new(format!("{ic}  {label}")).color(theme::text_dim())).frame(false)).clicked() {
+                    theme::set_dark(ui.ctx(), !dark);
+                    self.settings = crate::settings::Settings::update(|s| s.dark = !dark);
+                }
+                let active = self.view == View::Settings;
+                if ui.add(egui::Button::new(RichText::new(format!("{}  Settings", icon::GEAR)).color(if active { theme::accent() } else { theme::text_dim() })).frame(false)).clicked() {
+                    self.view = View::Settings;
+                }
+            });
+            if let Some(v) = self.updater.pending_version() {
+                if ui.add(egui::Button::new(RichText::new(format!("{} Update to {v}", icon::SPARKLE)).color(theme::on_accent())).fill(theme::accent())).clicked() {
+                    self.view = View::Settings;
+                }
             }
         });
     }
@@ -229,6 +260,7 @@ impl WieldApp {
             Some(ToolId::Debloat) => self.debloat.summary_line(),
             Some(ToolId::Network) => self.network.summary_line(),
             Some(ToolId::Malware) => self.malware.summary_line(),
+            Some(ToolId::Processes) => self.processes.summary_line(),
             None => None,
         };
         // Live status sits on its own line at the bottom of the card, above a divider.
@@ -283,9 +315,20 @@ impl eframe::App for WieldApp {
             View::Tool(ToolId::Debloat) => self.debloat.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Network) => self.network.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Malware) => self.malware.show(ui, self.elevated, &mut self.toasts),
+            View::Tool(ToolId::Processes) => self.processes.show(ui, self.elevated, &mut self.toasts),
+            View::Settings => self.updater.show_settings(ui, &mut self.settings, &mut self.toasts),
         });
 
         let ctx = ui.ctx().clone();
+        self.updater.poll(&ctx, &mut self.toasts);
+        if let Some(Intent::Scan(path)) = self.processes.take_intent() {
+            self.view = View::Tool(ToolId::Malware);
+            self.malware.scan_paths(vec![path], &ctx);
+        }
         self.toasts.show(&ctx);
+    }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.updater.on_exit();
     }
 }

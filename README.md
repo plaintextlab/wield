@@ -1,8 +1,15 @@
 # Wield
 
 A native Rust utility app for managing Windows 10 and Windows 11 (Home, Pro, Enterprise, Education, LTSC/IoT).
-Single portable `.exe`, no runtime or installer needed.
-Download it from [Releases](https://github.com/plaintextlab/wield/releases).
+Download it from [Releases](https://github.com/plaintextlab/wield/releases) in either form:
+
+- **Installer** (`wield-vX.Y.Z-setup.exe`): installs for your account without admin rights, or for all users.
+  Adds a Start menu entry, an optional desktop shortcut, the optional Explorer "Scan with Wield" entry, and an
+  uninstaller in Settings → Apps. Your Wield data (undo histories, backups) is kept on uninstall.
+- **Portable** (`wield-vX.Y.Z-windows-x64.exe`): one `.exe`, no installation. Run it from anywhere, including a USB
+  stick.
+
+Both kinds **update themselves**. See [Updates](#updates).
 
 Uses the [Gruvbox](https://github.com/morhetz/gruvbox) color scheme, in dark and light. Switch with the sun/moon button
 at the bottom of the sidebar; your choice is remembered.
@@ -20,6 +27,7 @@ at the bottom of the sidebar; your choice is remembered.
 | **App Debloater** | ✅ Available |
 | **Network Toolkit** | ✅ Available |
 | **Malware Scanner** | ✅ Available |
+| **Process Explorer** | ✅ Available |
 | Disk Cleanup, Update Control, Uninstaller, System Info | Planned |
 
 ### Startup Manager
@@ -172,6 +180,47 @@ require typing `RESTORE`. Items Defender *removed* (rather than quarantined) can
 Exclusions, quarantine and restore need administrator rights. On work PCs, policy or Tamper Protection may block
 exclusions.
 
+### Process Explorer
+
+![Process Explorer](docs/screenshots/processes.png)
+
+A Task Manager replacement that shows more:
+
+- **Every process**, read in one native call (`NtQuerySystemInformation`). Protected system processes that can't be
+  opened still show their memory, CPU time, threads, handles and I/O.
+- **Live** CPU %, private memory, I/O rate, threads and handles, plus whole-PC CPU/memory/I/O graphs.
+- **Tree view** of who started what (with PID reuse handled), or a sortable **list**. Filter by Apps, Background,
+  Windows, Suspended or Elevated, and search by name, PID, path, window title or hosted service.
+- **Details**, many of which Task Manager doesn't show:
+  - full path, Authenticode signature/publisher, command line, parent and children;
+  - start time and running time, total CPU time, user, integrity level, elevation, 32/64-bit;
+  - priority, services hosted (for `svchost.exe`);
+  - memory breakdown (private, working set, peaks, page faults, kernel pools) and I/O totals;
+  - per-process CPU/memory graphs;
+  - **open files and folders**, **loaded DLLs** (non-Windows ones highlighted) and **network connections**.
+- **Control**:
+  - **End task** / **End tree** (critical Windows processes are refused, and other Windows processes need confirming).
+  - **Suspend / Resume** (freeze a process temporarily).
+  - **Efficiency mode** (send it to the background: lowest priority plus power throttling, like Task Manager on
+    Windows 11, and it works on Windows 10 too).
+  - **Priority**, **CPU affinity** and **Restart**.
+  - Open file location, **Scan with Malware Scanner**, **Block its network access**, search online, copy the
+    command line.
+- **Who is locking a file?** Pick a file or folder that says "in use by another program" and Wield lists the
+  processes holding it (via the Restart Manager), with a button to end them.
+
+## Updates
+
+Wield checks GitHub for a new release when it starts (at most every 12 hours). You can turn this off in
+**Settings**.
+
+- When an update is available, the sidebar shows **Update to vX.Y.Z**. **Update now** downloads it, verifies it
+  against the release's published SHA-256 checksum, installs it and reopens Wield.
+- Turn on **Download updates automatically** to have updates download in the background and install when you close
+  Wield.
+- Installed copies update by running the new installer silently. Portable copies replace their own `.exe`.
+- **Skip this version** stops the reminder for that release.
+
 ## Build
 
 Requires the Rust MSVC toolchain.
@@ -180,7 +229,10 @@ Requires the Rust MSVC toolchain.
 cargo build --release
 ```
 
-The binary is `target/release/wield.exe`. Run `wield.exe --tool startup|privacy|debloat|network|malware` to open a tool directly. Add `--tab` to open a
+The binary is `target/release/wield.exe`. To build the installer as well, install
+[Inno Setup 6](https://jrsoftware.org/isinfo.php) and run `installeruild.ps1 -Version <x.y.z>`; it writes
+`dist\wield-v<x.y.z>-setup.exe`. CI builds the installer on every push and tests a silent install and uninstall. Run `wield.exe --tool startup|privacy|debloat|network|malware|processes|settings` to open a screen directly
+(`--pid <n>` preselects a process in Process Explorer). Add `--tab` to open a
 specific tab: `ports|firewall|scanner|tools` for the Network Toolkit, `protection|detections` for the Malware Scanner.
 `wield.exe --scan <file or folder>` opens the Malware Scanner and starts scanning.
 
@@ -203,4 +255,4 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The Release workflow attaches `wield-<tag>-windows-x64.exe` and its SHA-256 checksum to a GitHub Release.
+The Release workflow builds the portable exe and the installer, tests the installer, and attaches both with SHA-256 checksums to a GitHub Release.

@@ -5,6 +5,7 @@ use egui_phosphor::regular as icon;
 
 use crate::theme;
 use crate::toast::Toasts;
+use crate::tools::backup::ui::BackupManager;
 use crate::tools::debloat::ui::DebloatManager;
 use crate::tools::malware::ui::MalwareManager;
 use crate::tools::network::ui::NetworkManager;
@@ -22,6 +23,7 @@ enum ToolId {
     Network,
     Malware,
     Processes,
+    Backup,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -70,6 +72,12 @@ const TOOLS: &[ToolInfo] = &[
         title: "Malware Scanner",
         blurb: "Defender scans, signatures and online hash checks; exclusions and quarantine restore.",
     },
+    ToolInfo {
+        id: Some(ToolId::Backup),
+        icon: icon::FLOPPY_DISK,
+        title: "Backup & Restore",
+        blurb: "Bootable system images, restore points, folder backups and a reinstall kit.",
+    },
     ToolInfo { id: None, icon: icon::BROOM, title: "Disk Cleanup", blurb: "Find and clear temp files, caches and leftovers." },
     ToolInfo { id: None, icon: icon::CLOUD_ARROW_DOWN, title: "Update Control", blurb: "Pause, schedule and tune Windows Update." },
     ToolInfo {
@@ -93,6 +101,7 @@ pub struct WieldApp {
     network: NetworkManager,
     malware: MalwareManager,
     processes: ProcessManager,
+    backup: BackupManager,
     settings: crate::settings::Settings,
     updater: crate::settings_ui::Updater,
 }
@@ -110,6 +119,7 @@ impl WieldApp {
             Some("network") => View::Tool(ToolId::Network),
             Some("malware") => View::Tool(ToolId::Malware),
             Some("processes") => View::Tool(ToolId::Processes),
+            Some("backup") => View::Tool(ToolId::Backup),
             Some("settings") => View::Settings,
             _ => View::Home,
         };
@@ -124,8 +134,10 @@ impl WieldApp {
         if let Some(pid) = args.iter().position(|a| a == "--pid").and_then(|i| args.get(i + 1)).and_then(|p| p.parse().ok()) {
             processes.select_pid(pid);
         }
+        let mut backup = BackupManager::new();
         if let Some(tab) = args.iter().position(|a| a == "--tab").and_then(|i| args.get(i + 1)) {
             malware.set_tab(tab);
+            backup.set_tab(tab);
         }
         if let Some(p) = args.iter().position(|a| a == "--scan").and_then(|i| args.get(i + 1)) {
             view = View::Tool(ToolId::Malware);
@@ -134,7 +146,7 @@ impl WieldApp {
         let os = os_info();
         let mut updater = crate::settings_ui::Updater::new();
         updater.maybe_auto_check(&settings, &cc.egui_ctx);
-        Self { settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(),  network, malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
+        Self { settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, backup, malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
     }
 
     fn sidebar(&mut self, ui: &mut Ui) {
@@ -261,6 +273,7 @@ impl WieldApp {
             Some(ToolId::Network) => self.network.summary_line(),
             Some(ToolId::Malware) => self.malware.summary_line(),
             Some(ToolId::Processes) => self.processes.summary_line(),
+            Some(ToolId::Backup) => self.backup.summary_line(),
             None => None,
         };
         // Live status sits on its own line at the bottom of the card, above a divider.
@@ -316,6 +329,7 @@ impl eframe::App for WieldApp {
             View::Tool(ToolId::Network) => self.network.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Malware) => self.malware.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Processes) => self.processes.show(ui, self.elevated, &mut self.toasts),
+            View::Tool(ToolId::Backup) => self.backup.show(ui, self.elevated, &mut self.toasts),
             View::Settings => self.updater.show_settings(ui, &mut self.settings, &mut self.toasts),
         });
 

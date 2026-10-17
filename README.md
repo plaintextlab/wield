@@ -28,6 +28,7 @@ at the bottom of the sidebar; your choice is remembered.
 | **Network Toolkit** | ✅ Available |
 | **Malware Scanner** | ✅ Available |
 | **Process Explorer** | ✅ Available |
+| **Backup & Restore** | ✅ Available |
 | Disk Cleanup, Update Control, Uninstaller, System Info | Planned |
 
 ### Startup Manager
@@ -208,6 +209,43 @@ A Task Manager replacement that shows more:
     command line.
 - **Who is locking a file?** Pick a file or folder that says "in use by another program" and Wield lists the
   processes holding it (via the Restart Manager), with a button to end them.
+
+### Backup & Restore
+
+![Backup & Restore](docs/screenshots/backup.png)
+
+Get your PC back after a broken update, a bad driver, malware or a dead disk:
+
+- **System image**: a complete copy of Windows, programs, settings and files, made with Windows' own `wbadmin`.
+  - Save it to any internal or external drive, or to a network folder.
+  - **Restore it from the boot menu**, even when Windows no longer starts: Troubleshoot → System Image Recovery.
+  - **Pre-flight checks** run before you start. They block a destination that can't work (a USB stick, the drive
+    being backed up, FAT32, too little space). They warn when the destination is on the same physical disk, when
+    you're on battery, when the recovery environment is off, or when BitLocker is on.
+  - Live progress with a Stop button, and a list of the images already on the drive, each marked as restorable
+    from boot or not.
+  - Weekly or monthly automatic images.
+  - One click to **restart into the recovery options**, turn the Windows Recovery Environment on, or create a
+    recovery USB.
+- **System Restore**:
+  - Turn protection on or off per drive and set how much space restore points may use.
+  - **Create a restore point at any time**; Wield bypasses Windows' once-a-day limit.
+  - List all restore points, **restore** one (it's applied at the next restart), or **delete** one or all.
+  - Turn on a daily automatic restore point.
+- **Files & folders**:
+  - Incremental, resumable copies of Desktop, Documents, Pictures, Videos, Music, Downloads and any folders you
+    add (robocopy), to any drive or network folder.
+  - The backup is plain folders you can browse.
+  - Optional mirror mode and a daily schedule.
+  - **One-click restore** copies missing and older files back and never overwrites files that are newer on the PC.
+- **Reinstall kit**: everything you need after a clean install, saved in one folder with a README:
+  - all third-party **drivers**, with one-click reinstall;
+  - **Wi-Fi networks** and their passwords;
+  - the **list of installed apps**, plus a `winget import` file that reinstalls most of them at once;
+  - your **BitLocker recovery key**;
+  - the firmware **product key**.
+- Every restore and delete is confirmed by typing a word (RESTORE / DELETE / RESTART), and every backup is
+  logged with its full output.
 
 ## Updates
 

@@ -1,3 +1,4 @@
+pub mod backup;
 pub mod debloat;
 pub mod malware;
 pub mod network;

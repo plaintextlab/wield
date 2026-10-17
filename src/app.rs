@@ -6,6 +6,7 @@ use egui_phosphor::regular as icon;
 use crate::theme;
 use crate::toast::Toasts;
 use crate::tools::backup::ui::BackupManager;
+use crate::tools::ctxmenu::ui::ContextMenuManager;
 use crate::tools::debloat::ui::DebloatManager;
 use crate::tools::malware::ui::MalwareManager;
 use crate::tools::network::ui::NetworkManager;
@@ -24,6 +25,7 @@ enum ToolId {
     Malware,
     Processes,
     Backup,
+    ContextMenu,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -78,6 +80,12 @@ const TOOLS: &[ToolInfo] = &[
         title: "Backup & Restore",
         blurb: "Bootable system images, restore points, folder backups and a reinstall kit.",
     },
+    ToolInfo {
+        id: Some(ToolId::ContextMenu),
+        icon: icon::MOUSE_RIGHT_CLICK,
+        title: "Context Menu",
+        blurb: "Every right-click entry: hide, delete and restore, back up, or add your own commands.",
+    },
     ToolInfo { id: None, icon: icon::BROOM, title: "Disk Cleanup", blurb: "Find and clear temp files, caches and leftovers." },
     ToolInfo { id: None, icon: icon::CLOUD_ARROW_DOWN, title: "Update Control", blurb: "Pause, schedule and tune Windows Update." },
     ToolInfo {
@@ -102,6 +110,7 @@ pub struct WieldApp {
     malware: MalwareManager,
     processes: ProcessManager,
     backup: BackupManager,
+    ctxmenu: ContextMenuManager,
     settings: crate::settings::Settings,
     updater: crate::settings_ui::Updater,
 }
@@ -120,6 +129,7 @@ impl WieldApp {
             Some("malware") => View::Tool(ToolId::Malware),
             Some("processes") => View::Tool(ToolId::Processes),
             Some("backup") => View::Tool(ToolId::Backup),
+            Some("contextmenu") | Some("ctxmenu") => View::Tool(ToolId::ContextMenu),
             Some("settings") => View::Settings,
             _ => View::Home,
         };
@@ -135,18 +145,20 @@ impl WieldApp {
             processes.select_pid(pid);
         }
         let mut backup = BackupManager::new();
+        let os = os_info();
+        let mut ctxmenu = ContextMenuManager::new(os.build.split('.').next().and_then(|b| b.parse().ok()).unwrap_or(0));
         if let Some(tab) = args.iter().position(|a| a == "--tab").and_then(|i| args.get(i + 1)) {
             malware.set_tab(tab);
             backup.set_tab(tab);
+            ctxmenu.set_tab(tab);
         }
         if let Some(p) = args.iter().position(|a| a == "--scan").and_then(|i| args.get(i + 1)) {
             view = View::Tool(ToolId::Malware);
             malware.scan_paths(vec![std::path::PathBuf::from(p)], &cc.egui_ctx);
         }
-        let os = os_info();
         let mut updater = crate::settings_ui::Updater::new();
         updater.maybe_auto_check(&settings, &cc.egui_ctx);
-        Self { settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, backup, malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
+        Self { settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, backup, ctxmenu, malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
     }
 
     fn sidebar(&mut self, ui: &mut Ui) {
@@ -274,6 +286,7 @@ impl WieldApp {
             Some(ToolId::Malware) => self.malware.summary_line(),
             Some(ToolId::Processes) => self.processes.summary_line(),
             Some(ToolId::Backup) => self.backup.summary_line(),
+            Some(ToolId::ContextMenu) => self.ctxmenu.summary_line(),
             None => None,
         };
         // Live status sits on its own line at the bottom of the card, above a divider.
@@ -330,6 +343,7 @@ impl eframe::App for WieldApp {
             View::Tool(ToolId::Malware) => self.malware.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Processes) => self.processes.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Backup) => self.backup.show(ui, self.elevated, &mut self.toasts),
+            View::Tool(ToolId::ContextMenu) => self.ctxmenu.show(ui, self.elevated, &mut self.toasts),
             View::Settings => self.updater.show_settings(ui, &mut self.settings, &mut self.toasts),
         });
 

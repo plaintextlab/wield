@@ -12,6 +12,10 @@ mod update;
 mod win;
 
 fn main() -> eframe::Result<()> {
+    // Context menu entries set to "Run hidden" start their command through Wield without a window.
+    if tools::ctxmenu::custom::run_hidden_main() {
+        return Ok(());
+    }
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_title("Wield — Windows toolkit")

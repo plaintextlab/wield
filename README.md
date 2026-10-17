@@ -29,6 +29,7 @@ at the bottom of the sidebar; your choice is remembered.
 | **Malware Scanner** | ✅ Available |
 | **Process Explorer** | ✅ Available |
 | **Backup & Restore** | ✅ Available |
+| **Context Menu** | ✅ Available |
 | Disk Cleanup, Update Control, Uninstaller, System Info | Planned |
 
 ### Startup Manager
@@ -246,6 +247,33 @@ Get your PC back after a broken update, a bad driver, malware or a dead disk:
   - the firmware **product key**.
 - Every restore and delete is confirmed by typing a word (RESTORE / DELETE / RESTART), and every backup is
   logged with its full output.
+
+### Context Menu
+
+![Context Menu](docs/screenshots/contextmenu.png)
+
+Take control of every right-click menu:
+
+- **Finds every entry**, wherever you right-click:
+  - files, every file type, folders, folder background, the desktop, drives, This PC and the Recycle Bin;
+  - the **Send to** and **New** submenus;
+  - commands, shell extensions, and Windows 11 app entries read from the apps' manifests.
+- Shows each entry's publisher, what it runs, and where it's registered. Search across all menus at once.
+- **Hide anything** with a switch, including Windows' own entries. Hiding never deletes; it works for your
+  account without administrator rights and switches back just as easily.
+- **Delete** entries added by other programs. An exact copy is saved first, and the **Deleted entries** list puts
+  any of them back.
+- **Shift-only**: move a command into the extended (Shift+right-click) menu.
+- **Backups**: a complete snapshot of all menus, also made automatically the first time you open the tool and
+  before every restore. Restore one with a single click, optionally removing entries added since.
+- **Add your own**: run any program, `.bat`/`.cmd`, PowerShell script, VBScript or a raw command line.
+  - Add it to chosen file types (e.g. **Convert to JPEG** on `.webp` files using your own batch file), all files,
+    folders, the folder background, the desktop or drives.
+  - Use single items or a **whole submenu**, with icon, position, Shift-only, and for you or all users.
+  - Window options: show, keep open to read the output, or run hidden.
+  - **Test** a command on a sample file before adding it. A preview shows the exact command Windows will run,
+    and checks catch missing programs, unquoted paths and other mistakes.
+- **Windows 11**: switch back to the classic full menu (and back again), with Explorer restarted for you.
 
 ## Updates
 

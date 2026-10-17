@@ -283,7 +283,10 @@ mod tests {
         std::fs::write(&path, b"x").unwrap();
         let f = std::fs::File::open(&path).unwrap();
         let files = open_files(std::process::id()).unwrap();
-        assert!(files.iter().any(|p| p.eq_ignore_ascii_case(&path.display().to_string())), "{files:?}");
+        // Temp paths may be 8.3 short names (C:\Users\RUNNER~1\...); compare canonical long paths.
+        let want = std::fs::canonicalize(&path).unwrap().display().to_string();
+        let want = want.trim_start_matches(r"\\?\").to_lowercase();
+        assert!(files.iter().any(|p| p.to_lowercase() == want), "{want} not in {files:?}");
         let lockers = who_locks(std::slice::from_ref(&path)).unwrap();
         assert!(lockers.iter().any(|l| l.pid == std::process::id()));
         drop(f);

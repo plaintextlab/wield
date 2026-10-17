@@ -25,7 +25,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Test
-        run: cargo test --locked
+        shell: pwsh
+        run: |
+          cargo test --locked 2>&1 | Tee-Object -FilePath test.log
+          if ($LASTEXITCODE -ne 0) {
+            # Surface failures as annotations (visible without signing in).
+            Select-String -Path test.log -Pattern 'panicked at|FAILED|left:|right:|assertion|not in' | ForEach-Object { "::error::$($_.Line.Trim())" }
+            exit 1
+          }
       - name: Build release
         run: cargo build --release --locked
       - name: Build installer

@@ -5,6 +5,7 @@ use egui_phosphor::regular as icon;
 
 use crate::theme;
 use crate::toast::Toasts;
+use crate::tools::apps::ui::AppInstaller;
 use crate::tools::backup::ui::BackupManager;
 use crate::tools::ctxmenu::ui::ContextMenuManager;
 use crate::tools::debloat::ui::DebloatManager;
@@ -26,6 +27,7 @@ enum ToolId {
     Processes,
     Backup,
     ContextMenu,
+    Apps,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -75,6 +77,12 @@ const TOOLS: &[ToolInfo] = &[
         blurb: "Defender scans, signatures and online hash checks; exclusions and quarantine restore.",
     },
     ToolInfo {
+        id: Some(ToolId::Apps),
+        icon: icon::STOREFRONT,
+        title: "App Installer",
+        blurb: "90 free essentials (VLC, 7-Zip, Steam, OBS, VS Code…): tick them and install all at once, silently.",
+    },
+    ToolInfo {
         id: Some(ToolId::Backup),
         icon: icon::FLOPPY_DISK,
         title: "Backup & Restore",
@@ -111,6 +119,7 @@ pub struct WieldApp {
     processes: ProcessManager,
     backup: BackupManager,
     ctxmenu: ContextMenuManager,
+    apps: AppInstaller,
     settings: crate::settings::Settings,
     updater: crate::settings_ui::Updater,
 }
@@ -130,6 +139,7 @@ impl WieldApp {
             Some("processes") => View::Tool(ToolId::Processes),
             Some("backup") => View::Tool(ToolId::Backup),
             Some("contextmenu") | Some("ctxmenu") => View::Tool(ToolId::ContextMenu),
+            Some("apps") => View::Tool(ToolId::Apps),
             Some("settings") => View::Settings,
             _ => View::Home,
         };
@@ -158,7 +168,7 @@ impl WieldApp {
         }
         let mut updater = crate::settings_ui::Updater::new();
         updater.maybe_auto_check(&settings, &cc.egui_ctx);
-        Self { settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, backup, ctxmenu, malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
+        Self { settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, backup, ctxmenu, apps: AppInstaller::new(), malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
     }
 
     fn sidebar(&mut self, ui: &mut Ui) {
@@ -287,6 +297,7 @@ impl WieldApp {
             Some(ToolId::Processes) => self.processes.summary_line(),
             Some(ToolId::Backup) => self.backup.summary_line(),
             Some(ToolId::ContextMenu) => self.ctxmenu.summary_line(),
+            Some(ToolId::Apps) => self.apps.summary_line(),
             None => None,
         };
         // Live status sits on its own line at the bottom of the card, above a divider.
@@ -344,6 +355,7 @@ impl eframe::App for WieldApp {
             View::Tool(ToolId::Processes) => self.processes.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Backup) => self.backup.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::ContextMenu) => self.ctxmenu.show(ui, self.elevated, &mut self.toasts),
+            View::Tool(ToolId::Apps) => self.apps.show(ui, self.elevated, &mut self.toasts),
             View::Settings => self.updater.show_settings(ui, &mut self.settings, &mut self.toasts),
         });
 

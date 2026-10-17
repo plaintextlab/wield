@@ -1,7 +1,7 @@
 # Wield user manual
 
 Wield is a Windows toolkit for Windows 10 and Windows 11 (Home, Pro, Enterprise, Education, LTSC and IoT). Its tools
-let you control what starts with Windows, protect your privacy, remove bloat, watch and control the network, scan
+let you install essential apps in one click, control what starts with Windows, protect your privacy, remove bloat, watch and control the network, scan
 for malware, manage processes, back up and restore the whole PC, and edit the right-click menus.
 
 This manual explains every screen and every button. Each tool has its own page.
@@ -22,6 +22,7 @@ This manual explains every screen and every button. Each tool has its own page.
   - [Process Explorer](processes.md): every running process, with full control
   - [Malware Scanner](malware.md): Defender scans, signatures, online reputation, exclusions and quarantine
   - [Network Toolkit](network.md): per-app traffic, blocking, ports, firewall, LAN scanner, DNS and repairs
+  - [App Installer](apps.md): install 90 free essential apps at once, silently
   - [Backup & Restore](backup.md): system images, System Restore, folder backups and a reinstall kit
   - [Context Menu](context-menu.md): every right-click entry; hide, delete, back up, add your own
 - [Settings and updates](settings.md)
@@ -105,6 +106,7 @@ Everything lives in `%LOCALAPPDATA%\Wield` (paste that into Explorer's address b
 | `restore-protection.json` | System Protection state as Wield last set it |
 | `folder-backup.cmd` | The script run by the scheduled folder backup |
 | `ctxmenu\` | Context Menu backups, deleted entries, hidden Send To items and your own entries |
+| `app-installs\` | App Installer logs |
 
 The hosts file backup is next to the hosts file: `C:\Windows\System32\drivers\etc\hosts.wield-backup`.
 
@@ -112,7 +114,7 @@ The hosts file backup is next to the hosts file: `C:\Windows\System32\drivers\et
 
 | Option | Effect |
 |---|---|
-| `--tool <name>` | Opens a tool: `startup`, `privacy`, `debloat`, `network`, `malware`, `processes`, `backup`, `contextmenu` or `settings` |
+| `--tool <name>` | Opens a tool: `startup`, `privacy`, `debloat`, `network`, `malware`, `processes`, `apps`, `backup`, `contextmenu` or `settings` |
 | `--tab <name>` | Opens a tab. Network Toolkit: `activity`, `ports`, `firewall`, `scanner`, `tools`. Malware Scanner: `scan`, `protection`, `detections`. Backup & Restore: `image`, `restore`, `files`, `kit`. Context Menu: `menus`, `add`, `backups`, `win11` |
 | `--pid <number>` | Selects that process in Process Explorer |
 | `--scan <file or folder>` | Opens the Malware Scanner and starts scanning it |

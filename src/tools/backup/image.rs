@@ -337,6 +337,10 @@ pub fn history() -> Vec<History> {
 }
 
 pub fn record(h: History) {
+    // Tests run real backups into temp folders; keep them out of the user's history.
+    if cfg!(test) {
+        return;
+    }
     let mut all = history();
     all.push(h);
     if let Some(p) = history_path() {

@@ -32,6 +32,7 @@ at the bottom of the sidebar; your choice is remembered.
 | **Process Explorer** | ✅ Available |
 | **Backup & Restore** | ✅ Available |
 | **Context Menu** | ✅ Available |
+| **App Installer** | ✅ Available |
 | Disk Cleanup, Update Control, Uninstaller, System Info | Planned |
 
 ### Startup Manager
@@ -212,6 +213,20 @@ A Task Manager replacement that shows more:
     command line.
 - **Who is locking a file?** Pick a file or folder that says "in use by another program" and Wield lists the
   processes holding it (via the Restart Manager), with a button to end them.
+
+### App Installer
+
+![App Installer](docs/manual/images/apps.png)
+
+Tick apps and install them all at once, silently, through Microsoft's winget:
+
+- 90 free essentials in nine categories: utilities, browsers, media, creative, games and launchers, game runtimes,
+  hardware tools, chat and developer tools.
+- Quick picks for Essentials, Gaming, Creator and Developer.
+- Shows what's already installed, and updates every app with **Update all apps**.
+- On LTSC and older Windows 10, installs winget itself from Microsoft's release, with checksums verified.
+
+See the [manual](docs/manual/apps.md) for details.
 
 ### Backup & Restore
 

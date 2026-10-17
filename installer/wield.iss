@@ -1,5 +1,5 @@
 ; Inno Setup script for Wield.
-; Build: iscc /DAppVersion=0.8.1 installer\wield.iss   (after `cargo build --release`)
+; Build: iscc /DAppVersion=0.8.2 installer\wield.iss   (after `cargo build --release`)
 ;
 ; Installs per user by default (no administrator prompt, %LOCALAPPDATA%\Programs\Wield);
 ; the first page lets you install for all users into Program Files instead.

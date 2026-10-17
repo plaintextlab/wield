@@ -190,6 +190,17 @@ pub fn volumes() -> Vec<Volume> {
     out
 }
 
+/// Lowercase volume GUID ("{1234…}") of a drive letter.
+pub fn volume_guid(letter: &str) -> Option<String> {
+    let mp = wide(&format!("{letter}\\"));
+    let mut buf = [0u16; 64];
+    unsafe { windows::Win32::Storage::FileSystem::GetVolumeNameForVolumeMountPointW(PCWSTR(mp.as_ptr()), &mut buf) }.ok()?;
+    let s = String::from_utf16_lossy(&buf[..buf.iter().position(|&c| c == 0).unwrap_or(0)]).to_lowercase();
+    let start = s.find('{')?;
+    let end = s[start..].find('}')? + start;
+    Some(s[start..=end].to_string())
+}
+
 /// True when running on battery (no AC power).
 pub fn on_battery() -> bool {
     let mut st = SYSTEM_POWER_STATUS::default();

@@ -143,35 +143,46 @@ pub fn storage() -> Result<Vec<Storage>, String> {
 
 /// Drive letters with System Protection turned on.
 ///
-/// Windows records this under SPP\Clients, but that key is locked down and often can't be read
-/// even as administrator. When it can't, Wield uses the state it set itself last time, and
-/// otherwise assumes a drive is protected when it has restore point storage and System Restore is on.
+/// Windows records this under SPP\Clients as a list of volume IDs. That key is locked down and its
+/// format varies, so Wield matches each drive's volume ID and drive letter against it, and when it
+/// can't be read (or names no drive) falls back to the state Wield last set, then to "System
+/// Restore is on and the drive has restore point storage".
 pub fn protected_drives(storage: &[Storage]) -> Vec<String> {
-    let key = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey_with_flags(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SPP\Clients", KEY_QUERY_VALUE);
-    if let Ok(k) = key {
-        match k.get_value::<Vec<String>, _>("{09F7EDC5-294E-4180-AF6A-FB0E6A0E9513}") {
-            Ok(v) => return parse_protected(&v.join("\n")),
-            // No value at all: protection is off everywhere.
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Vec::new(),
-            Err(_) => {}
-        }
-    }
+    let spp = spp_text();
+    let listed = |letter: &str| {
+        spp.as_ref().is_some_and(|t| parse_protected(t).iter().any(|d| d == letter) || sys::volume_guid(letter).is_some_and(|g| t.to_lowercase().contains(&g)))
+    };
+    let volumes = sys::volumes();
+    let any_listed = volumes.iter().any(|v| listed(&v.letter));
     let remembered = remembered();
     let sr_on = RegKey::predef(HKEY_LOCAL_MACHINE)
         .open_subkey_with_flags(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore", KEY_QUERY_VALUE)
         .ok()
         .and_then(|k| k.get_value::<u32, _>("RPSessionInterval").ok())
         .is_some_and(|v| v != 0);
-    let mut drives: Vec<String> = sys::volumes()
+    let mut drives: Vec<String> = volumes
         .into_iter()
         .map(|v| v.letter)
-        .filter(|d| match remembered.get(d) {
-            Some(on) => *on,
-            None => sr_on && storage.iter().any(|s| &s.volume == d),
+        .filter(|d| {
+            if any_listed {
+                return listed(d);
+            }
+            match remembered.get(d) {
+                Some(on) => *on,
+                None => sr_on && storage.iter().any(|s| &s.volume == d),
+            }
         })
         .collect();
     drives.sort();
     drives
+}
+
+/// The SPP\Clients System Restore value as text (any registry type), if it can be read.
+fn spp_text() -> Option<String> {
+    let k = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey_with_flags(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SPP\Clients", KEY_QUERY_VALUE).ok()?;
+    let v = k.get_raw_value("{09F7EDC5-294E-4180-AF6A-FB0E6A0E9513}").ok()?;
+    let units: Vec<u16> = v.bytes.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect();
+    Some(String::from_utf16_lossy(&units).replace('\0', "\n"))
 }
 
 fn remembered_path() -> Option<std::path::PathBuf> {
@@ -196,8 +207,12 @@ fn remember(drive: &str, on: bool) {
 pub fn parse_protected(text: &str) -> Vec<String> {
     let mut v: Vec<String> = text
         .lines()
-        .filter_map(|l| l.split_once(":(").map(|(_, r)| r.trim_end_matches(')').replace("%3A", ":").to_uppercase()))
-        .filter(|d| d.len() == 2)
+        .filter_map(|l| {
+            let up = l.to_uppercase().replace("%3A", ":");
+            let i = up.rfind(":)")?;
+            let c = up[..i].chars().last()?;
+            c.is_ascii_alphabetic().then(|| format!("{c}:"))
+        })
         .collect();
     v.sort();
     v.dedup();
@@ -306,6 +321,15 @@ mod tests {
         let with_storage = vec![Storage { volume: sys.clone(), ..Default::default() }];
         let d = protected_drives(&with_storage);
         assert!(d.iter().all(|x| x.len() == 2 && x.ends_with(':')), "{d:?}");
+    }
+
+    #[test]
+    fn parses_other_protected_formats() {
+        assert_eq!(parse_protected(r"\\?\Volume{abc}\:(c%3a)"), vec!["C:".to_string()]);
+        assert_eq!(parse_protected("\\\\?\\Volume{abc}\\:(E:)\n\n"), vec!["E:".to_string()]);
+        assert!(parse_protected(r"\\?\Volume{abc}\").is_empty());
+        let g = sys::volume_guid(&sys::system_drive()).expect("system volume id");
+        assert!(g.starts_with('{') && g.ends_with('}') && g.len() == 38, "{g}");
     }
 
     #[test]

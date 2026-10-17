@@ -11,6 +11,8 @@ Download it from [Releases](https://github.com/plaintextlab/wield/releases) in e
 
 Both kinds **update themselves**. See [Updates](#updates).
 
+📖 **[User manual](docs/manual/README.md)**: how to use every tool, step by step, with screenshots.
+
 Uses the [Gruvbox](https://github.com/morhetz/gruvbox) color scheme, in dark and light. Switch with the sun/moon button
 at the bottom of the sidebar; your choice is remembered.
 
@@ -296,11 +298,10 @@ cargo build --release
 ```
 
 The binary is `target/release/wield.exe`. To build the installer as well, install
-[Inno Setup 6](https://jrsoftware.org/isinfo.php) and run `installeruild.ps1 -Version <x.y.z>`; it writes
-`dist\wield-v<x.y.z>-setup.exe`. CI builds the installer on every push and tests a silent install and uninstall. Run `wield.exe --tool startup|privacy|debloat|network|malware|processes|settings` to open a screen directly
-(`--pid <n>` preselects a process in Process Explorer). Add `--tab` to open a
-specific tab: `ports|firewall|scanner|tools` for the Network Toolkit, `protection|detections` for the Malware Scanner.
-`wield.exe --scan <file or folder>` opens the Malware Scanner and starts scanning.
+[Inno Setup 6](https://jrsoftware.org/isinfo.php) and run `installer\build.ps1 -Version <x.y.z>`; it writes
+`dist\wield-v<x.y.z>-setup.exe`. CI builds the installer on every push and tests a silent install and uninstall.
+Command-line options (`--tool`, `--tab`, `--pid`, `--scan`) are listed in the
+[manual](docs/manual/README.md#command-line-options).
 
 ```bash
 cargo test

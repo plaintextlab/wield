@@ -33,6 +33,7 @@ at the bottom of the sidebar; your choice is remembered.
 | **Backup & Restore** | ✅ Available |
 | **Context Menu** | ✅ Available |
 | **App Installer** | ✅ Available |
+| **Driver Manager** | ✅ Available |
 | Disk Cleanup, Update Control, Uninstaller, System Info | Planned |
 
 ### Startup Manager
@@ -227,6 +228,21 @@ Tick apps and install them all at once, silently, through Microsoft's winget:
 - On LTSC and older Windows 10, installs winget itself from Microsoft's release, with checksums verified.
 
 See the [manual](docs/manual/apps.md) for details.
+
+### Driver Manager
+
+![Driver Manager](docs/manual/images/drivers-updates.png)
+
+Finds devices without drivers and newer drivers, from official sources only:
+
+- **Windows Update's driver catalog**: install the drivers it offers for your devices.
+- **NVIDIA's driver service**: the newest Game Ready or Studio driver for your exact card, downloaded and checked
+  for NVIDIA's signature before it runs. AMD and Intel link to their official tools.
+- **Your PC maker**: detects HP, Dell, Lenovo, ASUS, MSI and others, opens your model's driver page and installs
+  the maker's update tool.
+- Every device with its driver version and date, problem codes explained, and installing drivers from a folder.
+
+See the [manual](docs/manual/drivers.md) for details.
 
 ### Backup & Restore
 

@@ -9,6 +9,7 @@ use crate::tools::apps::ui::AppInstaller;
 use crate::tools::backup::ui::BackupManager;
 use crate::tools::ctxmenu::ui::ContextMenuManager;
 use crate::tools::debloat::ui::DebloatManager;
+use crate::tools::drivers::ui::DriverManager;
 use crate::tools::malware::ui::MalwareManager;
 use crate::tools::network::ui::NetworkManager;
 use crate::tools::procs::ui::{Intent, ProcessManager};
@@ -28,6 +29,7 @@ enum ToolId {
     Backup,
     ContextMenu,
     Apps,
+    Drivers,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -83,6 +85,12 @@ const TOOLS: &[ToolInfo] = &[
         blurb: "90 free essentials (VLC, 7-Zip, Steam, OBS, VS Code…): tick them and install all at once, silently.",
     },
     ToolInfo {
+        id: Some(ToolId::Drivers),
+        icon: icon::CIRCUITRY,
+        title: "Driver Manager",
+        blurb: "Missing and outdated drivers: Windows Update, NVIDIA's newest graphics driver and your PC maker's tools.",
+    },
+    ToolInfo {
         id: Some(ToolId::Backup),
         icon: icon::FLOPPY_DISK,
         title: "Backup & Restore",
@@ -120,6 +128,7 @@ pub struct WieldApp {
     backup: BackupManager,
     ctxmenu: ContextMenuManager,
     apps: AppInstaller,
+    drivers: DriverManager,
     settings: crate::settings::Settings,
     updater: crate::settings_ui::Updater,
 }
@@ -140,6 +149,7 @@ impl WieldApp {
             Some("backup") => View::Tool(ToolId::Backup),
             Some("contextmenu") | Some("ctxmenu") => View::Tool(ToolId::ContextMenu),
             Some("apps") => View::Tool(ToolId::Apps),
+            Some("drivers") => View::Tool(ToolId::Drivers),
             Some("settings") => View::Settings,
             _ => View::Home,
         };
@@ -155,12 +165,14 @@ impl WieldApp {
             processes.select_pid(pid);
         }
         let mut backup = BackupManager::new();
+        let mut drivers = DriverManager::new();
         let os = os_info();
         let mut ctxmenu = ContextMenuManager::new(os.build.split('.').next().and_then(|b| b.parse().ok()).unwrap_or(0));
         if let Some(tab) = args.iter().position(|a| a == "--tab").and_then(|i| args.get(i + 1)) {
             malware.set_tab(tab);
             backup.set_tab(tab);
             ctxmenu.set_tab(tab);
+            drivers.set_tab(tab);
         }
         if let Some(p) = args.iter().position(|a| a == "--scan").and_then(|i| args.get(i + 1)) {
             view = View::Tool(ToolId::Malware);
@@ -168,7 +180,7 @@ impl WieldApp {
         }
         let mut updater = crate::settings_ui::Updater::new();
         updater.maybe_auto_check(&settings, &cc.egui_ctx);
-        Self { settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, backup, ctxmenu, apps: AppInstaller::new(), malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
+        Self { settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, backup, ctxmenu, apps: AppInstaller::new(), drivers, malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
     }
 
     fn sidebar(&mut self, ui: &mut Ui) {
@@ -187,14 +199,17 @@ impl WieldApp {
         }
         ui.add_space(10.0);
         ui.label(RichText::new("TOOLS").small().color(theme::text_dim()));
-        for t in TOOLS {
-            let active = t.id.is_some_and(|id| self.view == View::Tool(id));
-            if nav_item(ui, t.icon, t.title, active, t.id.is_some()) {
-                if let Some(id) = t.id {
-                    self.view = View::Tool(id);
+        // The tool list scrolls when the window is too short, so it never runs into the footer.
+        egui::ScrollArea::vertical().id_salt("nav_tools").max_height((ui.available_height() - 170.0).max(80.0)).auto_shrink([false, true]).show(ui, |ui| {
+            for t in TOOLS {
+                let active = t.id.is_some_and(|id| self.view == View::Tool(id));
+                if nav_item(ui, t.icon, t.title, active, t.id.is_some()) {
+                    if let Some(id) = t.id {
+                        self.view = View::Tool(id);
+                    }
                 }
             }
-        }
+        });
 
         ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
             ui.add_space(4.0);
@@ -298,6 +313,7 @@ impl WieldApp {
             Some(ToolId::Backup) => self.backup.summary_line(),
             Some(ToolId::ContextMenu) => self.ctxmenu.summary_line(),
             Some(ToolId::Apps) => self.apps.summary_line(),
+            Some(ToolId::Drivers) => self.drivers.summary_line(),
             None => None,
         };
         // Live status sits on its own line at the bottom of the card, above a divider.
@@ -356,6 +372,7 @@ impl eframe::App for WieldApp {
             View::Tool(ToolId::Backup) => self.backup.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::ContextMenu) => self.ctxmenu.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Apps) => self.apps.show(ui, self.elevated, &mut self.toasts),
+            View::Tool(ToolId::Drivers) => self.drivers.show(ui, self.elevated, &mut self.toasts),
             View::Settings => self.updater.show_settings(ui, &mut self.settings, &mut self.toasts),
         });
 

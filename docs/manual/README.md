@@ -1,7 +1,7 @@
 # Wield user manual
 
 Wield is a Windows toolkit for Windows 10 and Windows 11 (Home, Pro, Enterprise, Education, LTSC and IoT). Its tools
-let you install essential apps in one click, fix and update drivers, control what starts with Windows, protect your privacy, remove bloat, watch and control the network, scan
+let you install essential apps in one click, fix and update drivers, manage keyboard shortcuts, control what starts with Windows, protect your privacy, remove bloat, watch and control the network, scan
 for malware, manage processes, back up and restore the whole PC, and edit the right-click menus.
 
 This manual explains every screen and every button. Each tool has its own page.
@@ -24,6 +24,7 @@ This manual explains every screen and every button. Each tool has its own page.
   - [Network Toolkit](network.md): per-app traffic, blocking, ports, firewall, LAN scanner, DNS and repairs
   - [App Installer](apps.md): install 90 free essential apps at once, silently
   - [Driver Manager](drivers.md): missing and outdated drivers from Windows Update, NVIDIA and your PC's maker
+  - [Keyboard Shortcuts](shortcuts.md): every shortcut in one place; turn them off or give programs their own keys
   - [Backup & Restore](backup.md): system images, System Restore, folder backups and a reinstall kit
   - [Context Menu](context-menu.md): every right-click entry; hide, delete, back up, add your own
 - [Settings and updates](settings.md)
@@ -108,6 +109,7 @@ Everything lives in `%LOCALAPPDATA%\Wield` (paste that into Explorer's address b
 | `folder-backup.cmd` | The script run by the scheduled folder backup |
 | `ctxmenu\` | Context Menu backups, deleted entries, hidden Send To items and your own entries |
 | `app-installs\` | App Installer logs |
+| `hotkeys.json` | Shortcut keys you turned off in Keyboard Shortcuts, so they can be turned back on |
 
 The hosts file backup is next to the hosts file: `C:\Windows\System32\drivers\etc\hosts.wield-backup`.
 
@@ -115,8 +117,8 @@ The hosts file backup is next to the hosts file: `C:\Windows\System32\drivers\et
 
 | Option | Effect |
 |---|---|
-| `--tool <name>` | Opens a tool: `startup`, `privacy`, `debloat`, `network`, `malware`, `processes`, `apps`, `drivers`, `backup`, `contextmenu` or `settings` |
-| `--tab <name>` | Opens a tab. Network Toolkit: `activity`, `ports`, `firewall`, `scanner`, `tools`. Malware Scanner: `scan`, `protection`, `detections`. Backup & Restore: `image`, `restore`, `files`, `kit`. Context Menu: `menus`, `add`, `backups`, `win11`. Driver Manager: `overview`, `devices`, `problems`, `thirdparty`, `updates` (starts the check), `maker` |
+| `--tool <name>` | Opens a tool: `startup`, `privacy`, `debloat`, `network`, `malware`, `processes`, `apps`, `drivers`, `shortcuts`, `backup`, `contextmenu` or `settings` |
+| `--tab <name>` | Opens a tab. Network Toolkit: `activity`, `ports`, `firewall`, `scanner`, `tools`. Malware Scanner: `scan`, `protection`, `detections`. Backup & Restore: `image`, `restore`, `files`, `kit`. Context Menu: `menus`, `add`, `backups`, `win11`. Driver Manager: `overview`, `devices`, `problems`, `thirdparty`, `updates` (starts the check), `maker`. Keyboard Shortcuts: `windows`, `apps`, `inuse` |
 | `--pid <number>` | Selects that process in Process Explorer |
 | `--scan <file or folder>` | Opens the Malware Scanner and starts scanning it |
 | `--run-hidden <command>` | Runs a command without a window, then exits. Used by right-click entries set to "Run hidden". |

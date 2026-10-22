@@ -34,6 +34,7 @@ at the bottom of the sidebar; your choice is remembered.
 | **Context Menu** | ✅ Available |
 | **App Installer** | ✅ Available |
 | **Driver Manager** | ✅ Available |
+| **Keyboard Shortcuts** | ✅ Available |
 | Disk Cleanup, Update Control, Uninstaller, System Info | Planned |
 
 ### Startup Manager
@@ -243,6 +244,22 @@ Finds devices without drivers and newer drivers, from official sources only:
 - Every device with its driver version and date, problem codes explained, and installing drivers from a folder.
 
 See the [manual](docs/manual/drivers.md) for details.
+
+### Keyboard Shortcuts
+
+![Keyboard Shortcuts](docs/manual/images/shortcuts-windows.png)
+
+Every keyboard shortcut in one place:
+
+- About 120 Windows 10/11 shortcuts. Switches turn off the ones Windows allows: any Win+letter, Win+L, snapping,
+  Print Screen snipping, the accessibility shortcuts, language switching, or all Windows-key shortcuts at once.
+  The rest explain why they can't be changed.
+- Shortcut keys on your Start menu and desktop shortcuts: turn them off, change them, or give any program its own.
+- PowerToys shortcuts and Keyboard Manager remaps, and known apps' global hotkeys.
+- **In use right now**: which key combinations running programs have claimed, and a "Is this combination free?"
+  check.
+
+See the [manual](docs/manual/shortcuts.md) for details.
 
 ### Backup & Restore
 

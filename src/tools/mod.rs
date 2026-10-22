@@ -2,6 +2,7 @@ pub mod apps;
 pub mod backup;
 pub mod ctxmenu;
 pub mod drivers;
+pub mod hotkeys;
 pub mod debloat;
 pub mod malware;
 pub mod network;

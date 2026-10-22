@@ -13,6 +13,7 @@ This manual explains every screen and every button. Each tool has its own page.
 - [Getting started](#getting-started)
   - [Installing](#installing)
   - [The window](#the-window)
+  - [PC health](#pc-health)
   - [Administrator rights](#administrator-rights)
   - [How Wield keeps you safe](#how-wield-keeps-you-safe)
 - Tools
@@ -62,6 +63,37 @@ Each release also publishes a `.sha256` checksum for every file.
   - Your Windows edition, release and build.
   - **Update to vX.Y.Z** appears when a new version is available.
 - **Messages** about finished actions pop up in the bottom-right corner (green for success, red for problems).
+
+### PC health
+
+The top of **Home** shows how the PC is doing, live. Nothing here goes online.
+
+| Card | Shows |
+|---|---|
+| **Processor** | Load now and over the last two minutes, thread count and model. Also the **board sensor** temperature, the only one Windows shares without a driver. It's near the processor but isn't the exact core temperature, and many laptops only update it occasionally; Wield labels it **not updating** when the reading never changes. |
+| **Memory** | Free memory, usage over the last two minutes, and how much is in use |
+| **One card per drive** | Free space, with a bar that turns yellow below 12 % free and red below 5 % |
+| **Graphics** | For NVIDIA cards: temperature, load and video memory (from NVIDIA's driver) |
+| **Battery** or **Uptime** | Charge and whether it's plugged in; how long since the last restart and how many processes are running |
+
+**Recommendations** below the cards suggest what would make the PC faster or safer, most urgent first. Each has a
+button that opens the right Wield tool or Windows setting; **✕** hides one until Wield restarts.
+
+| Recommendation | When | Button |
+|---|---|---|
+| Drive almost full / running low | Under 5 % (or 5 GB) / 12 % (or 15 GB) free | Storage settings |
+| Temporary files | Over 1 GB in your Temp folder | **Clean temporary files**: deletes files there that haven't changed for over a day, skipping any in use. You confirm first. |
+| Memory nearly full | Over 88 % used for half a minute | Process Explorer |
+| Processor busy | Over 85 % for a minute | Process Explorer |
+| Running hot | The board sensor (only if it updates) at 95 °C or more for several minutes while the processor is busy; graphics at 90 °C or more | Process Explorer |
+| Restart to finish updates / not restarted for a week | Windows is waiting for a restart; or the PC has been up for over 7 days | Windows Update |
+| Many apps start with Windows | 15 or more startup apps, or 3 or more with high impact | [Startup Manager](startup.md) |
+| Devices with a driver problem | Any device with a problem code | [Driver Manager](drivers.md) |
+| Real-time protection is off | Defender is your antivirus and isn't scanning files as they open | Windows Security |
+| Power saver plan is on | While plugged in | Power settings |
+| No backup yet | No successful backup made with Wield | [Backup & Restore](backup.md) |
+
+CPU and memory refresh every 2 seconds, sensors and drives every 30 seconds, and the other checks every 10 minutes.
 
 ### Administrator rights
 

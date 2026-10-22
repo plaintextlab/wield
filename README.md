@@ -22,6 +22,10 @@ at the bottom of the sidebar; your choice is remembered.
 
 ![Home screen](docs/screenshots/home.png)
 
+**Home** shows live PC health: processor load and temperature, free memory, free space on every drive, GPU
+temperature, battery and uptime. Below are recommendations for speeding up the PC, each with a button that fixes
+it or opens the right tool. See [PC health](docs/manual/README.md#pc-health).
+
 | Tool | Status |
 |---|---|
 | **Startup Manager** | ✅ Available |

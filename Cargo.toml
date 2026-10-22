@@ -47,6 +47,7 @@ features = [
     "Win32_System_Ioctl",
     "Win32_System_Kernel",
     "Win32_System_Ole",
+    "Win32_System_Performance",
     "Win32_System_Power",
     "Win32_System_ProcessStatus",
     "Win32_System_RestartManager",

@@ -140,6 +140,7 @@ pub struct WieldApp {
     hotkeys: ShortcutManager,
     settings: crate::settings::Settings,
     updater: crate::settings_ui::Updater,
+    dashboard: crate::dashboard::Dashboard,
 }
 
 impl WieldApp {
@@ -148,21 +149,7 @@ impl WieldApp {
         theme::install(&cc.egui_ctx, settings.dark);
         // `wield.exe --tool startup` opens a tool directly (handy for shortcuts).
         let args: Vec<String> = std::env::args().collect();
-        let view = match args.iter().position(|a| a == "--tool").and_then(|i| args.get(i + 1)).map(String::as_str) {
-            Some("startup") => View::Tool(ToolId::Startup),
-            Some("privacy") => View::Tool(ToolId::Privacy),
-            Some("debloat") => View::Tool(ToolId::Debloat),
-            Some("network") => View::Tool(ToolId::Network),
-            Some("malware") => View::Tool(ToolId::Malware),
-            Some("processes") => View::Tool(ToolId::Processes),
-            Some("backup") => View::Tool(ToolId::Backup),
-            Some("contextmenu") | Some("ctxmenu") => View::Tool(ToolId::ContextMenu),
-            Some("apps") => View::Tool(ToolId::Apps),
-            Some("drivers") => View::Tool(ToolId::Drivers),
-            Some("shortcuts") | Some("hotkeys") => View::Tool(ToolId::Hotkeys),
-            Some("settings") => View::Settings,
-            _ => View::Home,
-        };
+        let view = args.iter().position(|a| a == "--tool").and_then(|i| args.get(i + 1)).and_then(|n| view_for(n)).unwrap_or(View::Home);
         let mut network = NetworkManager::new();
         if let Some(tab) = args.iter().position(|a| a == "--tab").and_then(|i| args.get(i + 1)) {
             network.set_tab(tab);
@@ -192,7 +179,7 @@ impl WieldApp {
         }
         let mut updater = crate::settings_ui::Updater::new();
         updater.maybe_auto_check(&settings, &cc.egui_ctx);
-        Self { settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, backup, ctxmenu, apps: AppInstaller::new(), drivers, hotkeys, malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
+        Self { dashboard: crate::dashboard::Dashboard::new(), settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, backup, ctxmenu, apps: AppInstaller::new(), drivers, hotkeys, malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
     }
 
     fn sidebar(&mut self, ui: &mut Ui) {
@@ -260,12 +247,37 @@ impl WieldApp {
         });
     }
 
+    /// Opens a tool by its `--tool` name, on a tab if given.
+    fn open_tool(&mut self, tool: &str, tab: Option<&str>) {
+        if let Some(v) = view_for(tool) {
+            self.view = v;
+        }
+        if let Some(t) = tab {
+            match self.view {
+                View::Tool(ToolId::Drivers) => self.drivers.set_tab(t),
+                View::Tool(ToolId::Backup) => self.backup.set_tab(t),
+                View::Tool(ToolId::Malware) => self.malware.set_tab(t),
+                View::Tool(ToolId::Network) => self.network.set_tab(t),
+                _ => {}
+            }
+        }
+    }
+
     fn home(&mut self, ui: &mut Ui) {
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
             egui::Frame::new().inner_margin(Margin::same(28)).show(ui, |ui| {
                 ui.label(RichText::new("Welcome to Wield").font(FontId::new(28.0, theme::heading_family())));
                 ui.label(RichText::new(format!("{}  ·  {}", self.os.summary(), if self.elevated { "Administrator" } else { "Standard user" })).color(theme::text_dim()));
-                ui.add_space(22.0);
+                ui.add_space(18.0);
+                if let Some((tool, tab)) = self.dashboard.show(ui, &mut self.toasts) {
+                    self.open_tool(tool, tab);
+                }
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(icon::SQUARES_FOUR).size(20.0).color(theme::accent()));
+                    ui.label(RichText::new("Tools").font(FontId::new(18.0, theme::heading_family())));
+                });
+                ui.add_space(8.0);
 
                 let card_w = 260.0;
                 let gap = 16.0;
@@ -341,6 +353,26 @@ impl WieldApp {
         }
         if available { resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() } else { false }
     }
+}
+
+/// The screen for a `--tool` name (also used by dashboard recommendations).
+fn view_for(name: &str) -> Option<View> {
+    Some(match name {
+        "home" => View::Home,
+        "startup" => View::Tool(ToolId::Startup),
+        "privacy" => View::Tool(ToolId::Privacy),
+        "debloat" => View::Tool(ToolId::Debloat),
+        "network" => View::Tool(ToolId::Network),
+        "malware" => View::Tool(ToolId::Malware),
+        "processes" => View::Tool(ToolId::Processes),
+        "backup" => View::Tool(ToolId::Backup),
+        "contextmenu" | "ctxmenu" => View::Tool(ToolId::ContextMenu),
+        "apps" => View::Tool(ToolId::Apps),
+        "drivers" => View::Tool(ToolId::Drivers),
+        "shortcuts" | "hotkeys" => View::Tool(ToolId::Hotkeys),
+        "settings" => View::Settings,
+        _ => return None,
+    })
 }
 
 /// Sidebar entry. Returns true when clicked.

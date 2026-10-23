@@ -39,7 +39,8 @@ it or opens the right tool. See [PC health](docs/manual/README.md#pc-health).
 | **App Installer** | ✅ Available |
 | **Driver Manager** | ✅ Available |
 | **Keyboard Shortcuts** | ✅ Available |
-| Disk Cleanup, Update Control, Uninstaller, System Info | Planned |
+| **Update Control** | ✅ Available |
+| Disk Cleanup, Uninstaller, System Info | Planned |
 
 ### Startup Manager
 
@@ -264,6 +265,17 @@ Every keyboard shortcut in one place:
   check.
 
 See the [manual](docs/manual/shortcuts.md) for details.
+
+### Update Control
+
+![Update Control](docs/manual/images/updates-apps.png)
+
+- **Windows Update**: pause updates for 1–5 weeks or resume them, check for and install updates, and see update
+  history.
+- **App updates**: lists every installed app with a switch to exclude it, then scans winget's catalog for newer
+  versions. Update the ones you tick silently, or download the installers only.
+
+See the [manual](docs/manual/updates.md) for details.
 
 ### Backup & Restore
 

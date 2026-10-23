@@ -16,6 +16,7 @@ use crate::tools::network::ui::NetworkManager;
 use crate::tools::procs::ui::{Intent, ProcessManager};
 use crate::tools::privacy::ui::PrivacyManager;
 use crate::tools::startup::ui::StartupManager;
+use crate::tools::updates::ui::UpdateManager;
 use crate::win::elevation;
 use crate::win::sysver::{OsInfo, os_info};
 
@@ -32,6 +33,7 @@ enum ToolId {
     Apps,
     Drivers,
     Hotkeys,
+    Updates,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -111,7 +113,12 @@ const TOOLS: &[ToolInfo] = &[
         blurb: "Every right-click entry: hide, delete and restore, back up, or add your own commands.",
     },
     ToolInfo { id: None, icon: icon::BROOM, title: "Disk Cleanup", blurb: "Find and clear temp files, caches and leftovers." },
-    ToolInfo { id: None, icon: icon::CLOUD_ARROW_DOWN, title: "Update Control", blurb: "Pause, schedule and tune Windows Update." },
+    ToolInfo {
+        id: Some(ToolId::Updates),
+        icon: icon::CLOUD_ARROW_DOWN,
+        title: "Update Control",
+        blurb: "Pause or run Windows Update, and update your installed apps, with the ones you choose left alone.",
+    },
     ToolInfo {
         id: Some(ToolId::Network),
         icon: icon::NETWORK,
@@ -138,6 +145,7 @@ pub struct WieldApp {
     apps: AppInstaller,
     drivers: DriverManager,
     hotkeys: ShortcutManager,
+    updates: UpdateManager,
     settings: crate::settings::Settings,
     updater: crate::settings_ui::Updater,
     dashboard: crate::dashboard::Dashboard,
@@ -163,6 +171,7 @@ impl WieldApp {
         }
         let mut backup = BackupManager::new();
         let mut drivers = DriverManager::new();
+        let mut updates = UpdateManager::new();
         let os = os_info();
         let mut hotkeys = ShortcutManager::new(os.build.split('.').next().and_then(|b| b.parse().ok()).unwrap_or(0));
         let mut ctxmenu = ContextMenuManager::new(os.build.split('.').next().and_then(|b| b.parse().ok()).unwrap_or(0));
@@ -172,6 +181,7 @@ impl WieldApp {
             ctxmenu.set_tab(tab);
             drivers.set_tab(tab);
             hotkeys.set_tab(tab);
+            updates.set_tab(tab);
         }
         if let Some(p) = args.iter().position(|a| a == "--scan").and_then(|i| args.get(i + 1)) {
             view = View::Tool(ToolId::Malware);
@@ -179,7 +189,7 @@ impl WieldApp {
         }
         let mut updater = crate::settings_ui::Updater::new();
         updater.maybe_auto_check(&settings, &cc.egui_ctx);
-        Self { dashboard: crate::dashboard::Dashboard::new(), settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, backup, ctxmenu, apps: AppInstaller::new(), drivers, hotkeys, malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
+        Self { dashboard: crate::dashboard::Dashboard::new(), settings, updater, view, privacy: PrivacyManager::new(os.clone()), debloat: DebloatManager::new(), network, backup, ctxmenu, apps: AppInstaller::new(), drivers, hotkeys, updates, malware, processes, os, elevated: elevation::is_elevated(), toasts: Toasts::default(), startup: StartupManager::new() }
     }
 
     fn sidebar(&mut self, ui: &mut Ui) {
@@ -258,6 +268,7 @@ impl WieldApp {
                 View::Tool(ToolId::Backup) => self.backup.set_tab(t),
                 View::Tool(ToolId::Malware) => self.malware.set_tab(t),
                 View::Tool(ToolId::Network) => self.network.set_tab(t),
+                View::Tool(ToolId::Updates) => self.updates.set_tab(t),
                 _ => {}
             }
         }
@@ -339,6 +350,7 @@ impl WieldApp {
             Some(ToolId::Apps) => self.apps.summary_line(),
             Some(ToolId::Drivers) => self.drivers.summary_line(),
             Some(ToolId::Hotkeys) => self.hotkeys.summary_line(),
+            Some(ToolId::Updates) => self.updates.summary_line(),
             None => None,
         };
         // Live status sits on its own line at the bottom of the card, above a divider.
@@ -370,6 +382,7 @@ fn view_for(name: &str) -> Option<View> {
         "apps" => View::Tool(ToolId::Apps),
         "drivers" => View::Tool(ToolId::Drivers),
         "shortcuts" | "hotkeys" => View::Tool(ToolId::Hotkeys),
+        "updates" => View::Tool(ToolId::Updates),
         "settings" => View::Settings,
         _ => return None,
     })
@@ -419,6 +432,7 @@ impl eframe::App for WieldApp {
             View::Tool(ToolId::Apps) => self.apps.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Drivers) => self.drivers.show(ui, self.elevated, &mut self.toasts),
             View::Tool(ToolId::Hotkeys) => self.hotkeys.show(ui, self.elevated, &mut self.toasts),
+            View::Tool(ToolId::Updates) => self.updates.show(ui, self.elevated, &mut self.toasts),
             View::Settings => self.updater.show_settings(ui, &mut self.settings, &mut self.toasts),
         });
 

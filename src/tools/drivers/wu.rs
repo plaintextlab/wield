@@ -84,6 +84,11 @@ pub enum Progress {
 
 /// Downloads and installs the chosen driver updates. Needs administrator rights.
 pub fn install(ids: Vec<String>, tx: Sender<Progress>, ctx: eframe::egui::Context) {
+    install_kind(ids, "Driver", tx, ctx)
+}
+
+/// Downloads and installs Windows Update items of a type ("Driver" or "Software"). Needs administrator rights.
+pub fn install_kind(ids: Vec<String>, kind: &str, tx: Sender<Progress>, ctx: eframe::egui::Context) {
     let list = ids.iter().map(|i| format!("'{}'", i.replace('\'', ""))).collect::<Vec<_>>().join(",");
     let script = format!(
         r#"
@@ -92,12 +97,12 @@ $s = New-Object -ComObject Microsoft.Update.Session
 $s.ClientApplicationID = 'Wield'
 $q = $s.CreateUpdateSearcher()
 $q.ServerSelection = 2
-Write-Output 'Looking up the selected drivers…'
-$r = $q.Search("IsInstalled=0 and Type='Driver'")
+Write-Output 'Looking up the selected updates…'
+$r = $q.Search("IsInstalled=0 and Type='{kind}'")
 $c = New-Object -ComObject Microsoft.Update.UpdateColl
 foreach ($u in $r.Updates) {{ if ($ids -contains $u.Identity.UpdateID) {{ if (-not $u.EulaAccepted) {{ $u.AcceptEula() }}; [void]$c.Add($u) }} }}
-if ($c.Count -eq 0) {{ throw 'The selected drivers are no longer offered (already installed?).' }}
-Write-Output ("Downloading {{0}} driver(s)…" -f $c.Count)
+if ($c.Count -eq 0) {{ throw 'The selected updates are no longer offered (already installed?).' }}
+Write-Output ("Downloading {{0}} update(s)…" -f $c.Count)
 $d = $s.CreateUpdateDownloader(); $d.Updates = $c; [void]$d.Download()
 Write-Output 'Installing…'
 $i = $s.CreateUpdateInstaller(); $i.Updates = $c
@@ -134,10 +139,11 @@ Write-Output ("RESULT|{{0}}|{{1}}|{{2}}" -f $ok, $bad.Count, $res.RebootRequired
             let ok: u32 = p.first().and_then(|s| s.parse().ok()).unwrap_or(0);
             let bad: u32 = p.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
             let reboot = p.get(2).is_some_and(|s| s.eq_ignore_ascii_case("True"));
-            let msg = format!("{ok} driver(s) installed{}.", if reboot { ". Restart Windows to finish" } else { "" });
+            let what = if kind == "Driver" { "driver(s)" } else { "update(s)" };
+            let msg = format!("{ok} {what} installed{}.", if reboot { ". Restart Windows to finish" } else { "" });
             if bad == 0 { Ok(msg) } else { Err(format!("{msg} {bad} failed.")) }
         }
-        (Ok(_), None) | (Err(_), None) => Err(errors.into_iter().map(|e| sys::first_error(&e)).next().unwrap_or_else(|| "Windows Update couldn't install the drivers.".into())),
+        (Ok(_), None) | (Err(_), None) => Err(errors.into_iter().map(|e| sys::first_error(&e)).next().unwrap_or_else(|| "Windows Update couldn't install them.".into())),
     };
     send(Progress::Done(done));
 }

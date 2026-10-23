@@ -1,6 +1,6 @@
 [package]
 name = "wield"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2024"
 description = "Utility app for Windows for system management activities"
 license = "MIT"
